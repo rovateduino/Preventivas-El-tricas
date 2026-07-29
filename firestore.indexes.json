@@ -1,0 +1,12 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "preventivas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "criadoEm", "order": "DESCENDING" }
+      ]
+    }
+  ]
+}
