@@ -76,7 +76,7 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
         )}
 
         <a
-          href="https://github.com/rovateduino/Preventivas-El-tricas/releases/download/App_Preventiva/Preventivas.Eletricas.1.0.0.Portable.exe"
+          href="https://github.com/rovateduino/Preventivas-El-tricas/releases/download/v1.0.0/Preventivas.Eletricas.1.0.0.Portable.exe"
           target="_blank"
           rel="noopener noreferrer"
           className="block group relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-600/10 via-teal-600/10 to-cyan-600/10 p-4 backdrop-blur-sm transition-all duration-300 hover:border-emerald-400/40 hover:shadow-[0_0_30px_-10px_rgba(16,185,129,0.4)]"
@@ -96,7 +96,7 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
                   v1.0.0
                 </span>
                 <span className="inline-flex items-center rounded-md bg-slate-700/40 px-2 py-0.5 text-[10px] font-semibold text-slate-300 ring-1 ring-inset ring-slate-500/30">
-                  Portable · ~620 MB
+                  Portable · 621 MB
                 </span>
               </div>
               <h3 className="text-base font-bold text-white leading-tight">
@@ -113,9 +113,16 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
           </div>
           <div className="relative mt-3 flex items-center justify-between text-[11px]">
             <div className="flex items-center gap-3 text-slate-500">
-              <span className="inline-flex items-center gap-1">
+              <span
+                className="inline-flex items-center gap-1 cursor-pointer underline-offset-2 hover:text-emerald-300 hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  window.open("https://github.com/rovateduino/Preventivas-El-tricas/releases/tag/v1.0.0", "_blank", "noopener,noreferrer");
+                }}
+              >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0.5" y="3.5" width="2" height="6" rx="0.5" fill="#10B981"/><rect x="4" y="1.5" width="2" height="8" rx="0.5" fill="#14B8A6"/><rect x="7.5" y="4.5" width="2" height="5" rx="0.5" fill="#06B6D4"/></svg>
-                GitHub Release Oficial
+                Ver página da release ↗
               </span>
               <span className="text-emerald-400/80">✓ Assinado digitalmente</span>
             </div>
