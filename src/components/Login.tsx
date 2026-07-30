@@ -43,6 +43,9 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
     }
   };
 
+  const openAbout = () => setShowAbout(true);
+  const downloadUrl = 'https://github.com/rovateduino/Preventivas-El-tricas/releases/download/v1.0.0/Preventivas.Eletricas.1.0.0.Portable.exe';
+
   const appFeatures = [
     { icon: Zap, color: "text-amber-400", bg: "from-amber-500/20 to-orange-500/10", ring: "ring-amber-400/20", title: "Cálculo Automático", desc: "Soma total de correntes por via ou fase em tempo real, conforme tipo de quadro." },
     { icon: FileCheck, color: "text-emerald-400", bg: "from-emerald-500/20 to-teal-500/10", ring: "ring-emerald-400/20", title: "Relatório Profissional", desc: "Imprima ou salve em PDF o relatório completo com layout técnico elegante." },
@@ -124,10 +127,12 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
           </div>
 
           <div className="w-full max-w-md mx-auto lg:mx-0 lg:justify-self-start lg:self-center lg:mt-4">
-            <button
-              type="button"
-              onClick={() => setShowAbout(true)}
-              className="w-full group text-left relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-slate-900/85 via-slate-900/75 to-slate-950/85 backdrop-blur-2xl p-6 sm:p-7 shadow-2xl shadow-black/40 transition-all duration-300 hover:border-emerald-400/50 hover:shadow-[0_0_50px_-15px_rgba(16,185,129,0.45)]"
+            <a
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Baixar o aplicativo Preventivas Elétricas"
+              className="block w-full group text-left relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-slate-900/85 via-slate-900/75 to-slate-950/85 backdrop-blur-2xl p-6 sm:p-7 shadow-2xl shadow-black/40 transition-all duration-300 hover:border-emerald-400/50 hover:shadow-[0_0_50px_-15px_rgba(16,185,129,0.45)]"
             >
               <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-emerald-500/10 blur-3xl transition-opacity group-hover:opacity-90" />
               <div className="absolute -left-16 -bottom-20 h-44 w-44 rounded-full bg-cyan-500/10 blur-3xl transition-opacity group-hover:opacity-90" />
@@ -180,16 +185,24 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
               </div>
 
               <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-slate-700/50 pt-4">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-800/60 border border-slate-700/70">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openAbout();
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-800/60 border border-slate-700/70 hover:bg-slate-700/70 hover:text-white hover:border-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+                >
                   <Info size={13} className="text-emerald-400" />
                   Sobre o App
-                </span>
+                </button>
                 <span className="inline-flex items-center gap-1.5 font-bold text-emerald-300 text-sm sm:text-base transition-transform group-hover:translate-x-1">
-                  Abrir informações
+                  Baixar agora
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h9.5M7.25 3.75 12.5 8l-5.25 4.25" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </span>
               </div>
-            </button>
+            </a>
           </div>
 
         </div>
