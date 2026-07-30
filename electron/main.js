@@ -9,6 +9,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      devTools: true,
     },
   });
 
@@ -17,6 +18,27 @@ function createWindow() {
   } else {
     win.loadFile(join(process.cwd(), 'dist', 'index.html'));
   }
+
+  // Ativar F12 para DevTools
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+      if (win.webContents.isDevToolsOpened()) {
+        win.webContents.closeDevTools();
+      } else {
+        win.webContents.openDevTools();
+      }
+      event.preventDefault();
+    }
+    // Alternativa: usar F12
+    if (input.key === 'F12') {
+      if (win.webContents.isDevToolsOpened()) {
+        win.webContents.closeDevTools();
+      } else {
+        win.webContents.openDevTools();
+      }
+      event.preventDefault();
+    }
+  });
 }
 
 app.whenReady().then(() => {

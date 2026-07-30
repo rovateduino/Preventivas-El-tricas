@@ -2,6 +2,8 @@ node_modules/
 build/
 dist/
 dist-web/
+dist-producao/
+dist-producao_old_*/
 build-out/
 release/
 coverage/

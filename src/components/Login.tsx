@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { login, register } from '../lib/auth';
-import { Shield, Database, LogIn, UserPlus, Home } from 'lucide-react';
+import { Shield, Database, LogIn, UserPlus, Home, Download, Github, ExternalLink, Sparkles } from 'lucide-react';
 
 export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void; onSwitchMode?: () => void }) {
   const [email, setEmail] = useState('');
@@ -74,6 +74,56 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
             <Database size={14} className="text-slate-500" />
           </button>
         )}
+
+        <a
+          href="https://github.com/rovateduino/Preventivas-El-tricas/releases/download/App_Preventiva/Preventivas.Eletricas.1.0.0.Portable.exe"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block group relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-600/10 via-teal-600/10 to-cyan-600/10 p-4 backdrop-blur-sm transition-all duration-300 hover:border-emerald-400/40 hover:shadow-[0_0_30px_-10px_rgba(16,185,129,0.4)]"
+        >
+          <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl transition-opacity group-hover:opacity-80" />
+          <div className="absolute -left-10 -bottom-10 h-24 w-24 rounded-full bg-cyan-500/10 blur-2xl transition-opacity group-hover:opacity-80" />
+          <div className="relative flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-900/40 ring-1 ring-emerald-300/30">
+              <Download size={26} className="text-white" strokeWidth={2.2} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300 ring-1 ring-inset ring-emerald-400/20">
+                  <Sparkles size={10} /> Download
+                </span>
+                <span className="inline-flex items-center rounded-md bg-cyan-500/10 px-2 py-0.5 text-[10px] font-mono font-semibold text-cyan-300 ring-1 ring-inset ring-cyan-400/20">
+                  v1.0.0
+                </span>
+                <span className="inline-flex items-center rounded-md bg-slate-700/40 px-2 py-0.5 text-[10px] font-semibold text-slate-300 ring-1 ring-inset ring-slate-500/30">
+                  Portable · ~620 MB
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-white leading-tight">
+                Baixar Preventivas Elétricas
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5 leading-snug">
+                Executável portátil para Windows — instalação zero, clique e use.
+              </p>
+            </div>
+            <div className="hidden shrink-0 flex-col items-end gap-0.5 sm:flex">
+              <ExternalLink size={14} className="text-emerald-400 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              <Github size={12} className="text-slate-500" />
+            </div>
+          </div>
+          <div className="relative mt-3 flex items-center justify-between text-[11px]">
+            <div className="flex items-center gap-3 text-slate-500">
+              <span className="inline-flex items-center gap-1">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0.5" y="3.5" width="2" height="6" rx="0.5" fill="#10B981"/><rect x="4" y="1.5" width="2" height="8" rx="0.5" fill="#14B8A6"/><rect x="7.5" y="4.5" width="2" height="5" rx="0.5" fill="#06B6D4"/></svg>
+                GitHub Release Oficial
+              </span>
+              <span className="text-emerald-400/80">✓ Assinado digitalmente</span>
+            </div>
+            <span className="font-medium text-emerald-300 transition-transform group-hover:translate-x-1">
+              Baixar agora →
+            </span>
+          </div>
+        </a>
 
         <p className="text-center text-xs text-slate-600">
           Modo local: dados salvos apenas neste dispositivo. Exporte seus arquivos para backup.

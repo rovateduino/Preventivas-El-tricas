@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Zap, Thermometer, Ticket, Search, Plus, Trash2, FileDown, X, Filter, Calendar, ChevronDown, Save, AlertTriangle, LogOut, Download, Upload } from "lucide-react";
 import { subscribeToAuthChanges, logout } from './lib/auth';
-import { getPreventivas, savePreventiva, deletePreventiva } from './lib/preventivaService';
+import { getPreventivas, savePreventiva, deletePreventiva, importPreventivas, deleteAllPreventivas } from './lib/preventivaService';
 import { exportToJSON, importFromJSON } from './lib/dataExport';
+import { db } from './lib/firebase';
 import { User } from 'firebase/auth';
+import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import Login from './components/Login';
 import { STORAGE_KEY, MODE_KEY } from './lib/constants';
 
@@ -87,6 +89,19 @@ function buildReportHTML(record: any) {
         ${tresFases ? `<tr><td>Corrente Fase T</td><td>${mc.t || "-"} A</td></tr>` : ""}`
     : "";
 
+  const tensaoRows = viaAB
+    ? `
+      <tr><td>Tensão AC</td><td>${record.tensaoAC || "-"} V</td></tr>
+      <tr><td>Tensão DC</td><td>${record.tensaoDC || "-"} V</td></tr>`
+    : `
+      <tr><td>Tensão Fase R</td><td>${record.tensaoR || "-"} V</td></tr>
+      <tr><td>Tensão Fase S</td><td>${record.tensaoS || "-"} V</td></tr>
+      <tr><td>Tensão Fase T</td><td>${record.tensaoT || "-"} V</td></tr>
+      <tr><td colspan="2" style="font-size:10px;color:#64748b;letter-spacing:1px;padding-top:6px;">TENSÃO COMPOSTA (ENTRE FASES)</td></tr>
+      <tr><td>Tensão Fase RS</td><td>${record.tensaoRS || "-"} V</td></tr>
+      <tr><td>Tensão Fase ST</td><td>${record.tensaoST || "-"} V</td></tr>
+      <tr><td>Tensão Fase TR</td><td>${record.tensaoTR || "-"} V</td></tr>`;
+
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -119,8 +134,7 @@ function buildReportHTML(record: any) {
       <tr><td>Temperatura</td><td>${record.temperatura}°C</td></tr>
       <tr><td>Categoria do Site</td><td>${record.site.cat || record.site.categoria || "-"}</td></tr>
       ${record.tipoComplemento ? `<tr><td>Complemento do Quadro</td><td>${record.tipoComplemento}</td></tr>` : ""}
-      <tr><td>Tensão AC</td><td>${record.tensaoAC || "-"} V</td></tr>
-      <tr><td>Tensão DC</td><td>${record.tensaoDC || "-"} V</td></tr>
+      ${tensaoRows}
     </tbody>
   </table>
   <table class="corrente">
@@ -139,54 +153,6 @@ function buildReportHTML(record: any) {
     <tbody>
       ${rows}
     </tbody>
-  </table>
-</body>
-</html>`;
-
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8" />
-<title>Preventiva ${record.site.sigla} - ${formatDateBR(record.data)}</title>
-<style>
-  body { font-family: Arial, Helvetica, sans-serif; color: #111; padding: 32px; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  h2 { font-size: 14px; margin: 0 0 8px; }
-  .subtitle { color: #555; margin-bottom: 20px; font-size: 14px; }
-  table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-  td, th { border: 1px solid #ccc; padding: 6px 10px; font-size: 13px; text-align: left; }
-  th { background: #f2f2f2; }
-  .meta td:first-child { font-weight: bold; width: 160px; border: none; padding: 3px 10px 3px 0; }
-  .meta td:last-child { border: none; padding: 3px 0; }
-  .meta table, .meta { border: none; }
-  .corrente td:first-child { font-weight: bold; width: 220px; }
-  @media print {
-    body { padding: 0; }
-  }
-</style>
-</head>
-<body>
-  <h1>Relatório de Preventiva Elétrica</h1>
-  <div class="subtitle">${record.site.name} (${record.site.sigla}) — Quadro ${record.tipo}</div>
-  <table class="meta">
-    <tbody>
-      <tr><td>Data</td><td>${formatDateBR(record.data)}</td></tr>
-      <tr><td>Nº Ticket</td><td>${record.ticket}</td></tr>
-      <tr><td>Temperatura</td><td>${record.temperatura}°C</td></tr>
-      <tr><td>Categoria do Site</td><td>${record.site.cat || record.site.categoria || "-"}</td></tr>
-    </tbody>
-  </table>
-  ${mc ? `<h2>Medição de Corrente do Quadro</h2><table class="corrente"><tbody>${correnteRows}</tbody></table>` : ""}
-  <table>
-    <thead>
-      <tr>
-        <th>Nº</th>
-        <th>Med. R (A)</th>
-        ${tresFases ? "<th>Med. S (A)</th>" : ""}
-        ${tresFases ? "<th>Med. T (A)</th>" : ""}
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
   </table>
   <script>window.onload = function() { setTimeout(function(){ window.print(); }, 300); };</script>
 </body>
@@ -247,6 +213,12 @@ export default function App() {
   const [correnteViaA, setCorrenteViaA] = useState("");
   const [correnteViaB, setCorrenteViaB] = useState("");
   const [correnteGeral, setCorrenteGeral] = useState("");
+  const [tensaoR, setTensaoR] = useState("");
+  const [tensaoS, setTensaoS] = useState("");
+  const [tensaoT, setTensaoT] = useState("");
+  const [tensaoRS, setTensaoRS] = useState("");
+  const [tensaoST, setTensaoST] = useState("");
+  const [tensaoTR, setTensaoTR] = useState("");
   const [tensaoAC, setTensaoAC] = useState("");
   const [tensaoDC, setTensaoDC] = useState("");
   const [formError, setFormError] = useState("");
@@ -257,6 +229,9 @@ export default function App() {
   const [fSigla, setFSigla] = useState("");
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [clearConfirmText, setClearConfirmText] = useState("");
+  const [clearProgress, setClearProgress] = useState<{ total: number; done: number } | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importError, setImportError] = useState("");
   const [toast, setToast] = useState("");
@@ -279,6 +254,8 @@ export default function App() {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
   };
+
+
 
   useEffect(() => {
     const loadRecords = async () => {
@@ -329,6 +306,12 @@ export default function App() {
     setCorrenteViaA("");
     setCorrenteViaB("");
     setCorrenteGeral("");
+    setTensaoR("");
+    setTensaoS("");
+    setTensaoT("");
+    setTensaoRS("");
+    setTensaoST("");
+    setTensaoTR("");
     setTensaoAC("");
     setTensaoDC("");
   }, [tipo]);
@@ -477,6 +460,12 @@ export default function App() {
     setCorrenteViaA("");
     setCorrenteViaB("");
     setCorrenteGeral("");
+    setTensaoR("");
+    setTensaoS("");
+    setTensaoT("");
+    setTensaoRS("");
+    setTensaoST("");
+    setTensaoTR("");
     setTensaoAC("");
     setTensaoDC("");
     setFormError("");
@@ -505,6 +494,12 @@ export default function App() {
       site: siteSelected,
       circuitos,
       medicaoCorrente,
+      tensaoR: tensaoR.trim(),
+      tensaoS: tensaoS.trim(),
+      tensaoT: tensaoT.trim(),
+      tensaoRS: tensaoRS.trim(),
+      tensaoST: tensaoST.trim(),
+      tensaoTR: tensaoTR.trim(),
       tensaoAC: tensaoAC.trim(),
       tensaoDC: tensaoDC.trim(),
       criadoEm: new Date().toISOString(),
@@ -559,13 +554,23 @@ export default function App() {
     try {
       setImportError("");
       const imported = await importFromJSON(importFile);
+
       if (saveMode === "local") {
         const next = [...imported, ...records];
         await storeLocalRecords(next);
         showToast(`Importados ${imported.length} registros com sucesso ✓`);
       } else {
-        showToast(`Importados ${imported.length} registros (modo local para importar).`);
+        if (!user) {
+          setImportError("Login necessário para importar no Firebase.");
+          return;
+        }
+
+        await importPreventivas(imported, user.uid);
+        const firebaseRecords = await getPreventivas(user.uid);
+        setRecords(firebaseRecords);
+        showToast(`Importados ${imported.length} registros no Firebase ✓`);
       }
+
       setShowImportModal(false);
       setImportFile(null);
     } catch (err) {
@@ -579,13 +584,74 @@ export default function App() {
     setImportError("");
   }
 
+  async function handleClearAll() {
+    if (clearConfirmText.trim() !== "LIMPAR") {
+      showToast('Digite "LIMPAR" para confirmar.');
+      return;
+    }
+
+    try {
+      setClearProgress({ total: records.length, done: 0 });
+
+      if (saveMode === "local") {
+        await storeLocalRecords([]);
+        setClearProgress({ total: records.length, done: records.length });
+        showToast(`${records.length} registro(s) apagado(s) localmente.`);
+      } else {
+        if (!user) {
+          showToast("Login necessário para apagar no Firebase.");
+          setClearProgress(null);
+          return;
+        }
+
+        const total = await deleteAllPreventivas(user.uid);
+        if (total === 0 && records.length > 0) {
+          for (let i = 0; i < records.length; i++) {
+            try {
+              await deletePreventiva(records[i].id);
+            } catch {}
+            setClearProgress({ total: records.length, done: i + 1 });
+          }
+        } else {
+          setClearProgress({ total: Math.max(total, records.length), done: Math.max(total, records.length) });
+        }
+
+        try {
+          const refresh = await getPreventivas(user.uid);
+          setRecords(refresh);
+        } catch {
+          setRecords([]);
+        }
+        showToast(`${Math.max(records.length, 0)} registro(s) apagado(s) do Firebase.`);
+      }
+
+      setTimeout(() => {
+        setShowClearModal(false);
+        setClearConfirmText("");
+        setClearProgress(null);
+      }, 600);
+    } catch (err) {
+      console.error("Erro ao limpar banco:", err);
+      showToast("Falha ao limpar banco. Verifique o console.");
+      setClearProgress(null);
+    }
+  }
+
   if (authLoading) return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Carregando...</div>;
   if (saveMode === "firebase" && !user) {
     return <Login onLogin={() => {}} onSwitchMode={() => setSaveMode('local')} />;
   }
 
   const userLabel = user ? user.email : 'Modo local';
-  const canLogout = Boolean(user);
+
+  const handleHeaderAction = () => {
+    if (user) {
+      logout();
+      return;
+    }
+
+    showToast('Modo local ativo');
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
@@ -598,11 +664,14 @@ export default function App() {
             <h1 className="text-lg font-semibold tracking-tight">Preventivas Elétricas</h1>
             <p className="text-xs text-slate-400">Medições de tensão e corrente em quadros energizados ({userLabel})</p>
           </div>
-          {canLogout && (
-            <button onClick={() => logout()} className="ml-auto text-slate-400 hover:text-white">
-              <LogOut size={18} />
-            </button>
-          )}
+          <button
+            onClick={handleHeaderAction}
+            className={`ml-auto flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors ${user ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white' : 'bg-slate-800/70 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+            title={user ? 'Sair' : 'Modo local'}
+          >
+            <LogOut size={15} />
+            <span>{user ? 'Sair' : 'Modo local'}</span>
+          </button>
           <div className="flex gap-4 font-mono text-sm ml-4">
             <Readout label="REGISTROS" value={stats.total} />
             <Readout label="SITES" value={stats.sites} />
@@ -635,22 +704,28 @@ export default function App() {
                 </button>
               </div>
               <p className="text-xs text-slate-500 sm:ml-auto">
-                {saveMode === 'local' ? 'Registros ficam armazenados no dispositivo atual. Exporte seus dados a qualquer momento.' : 'Será necessário fazer login para salvar no Firebase.'}
+                {saveMode === 'local'
+                  ? 'Registros ficam armazenados no dispositivo atual. Exporte seus dados a qualquer momento.'
+                  : user
+                    ? `Salvando no Firebase como ${user.email}`
+                    : 'Será necessário fazer login para salvar no Firebase.'}
               </p>
             </div>
-            {saveMode === 'local' && records.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setShowExportModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
-                  <Download size={12} /> Exportar JSON
-                </button>
-                <button type="button" onClick={() => setShowImportModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
-                  <Upload size={12} /> Importar JSON
-                </button>
-                <span className="text-xs text-slate-500 self-center">{records.length} registro(s) salvos</span>
-              </div>
-            )}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setShowExportModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
+                <Download size={12} /> Exportar JSON
+              </button>
+              <button type="button" onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
+                <Upload size={12} /> Importar JSON
+              </button>
+              <button type="button" onClick={() => { setClearConfirmText(""); setClearProgress(null); setShowClearModal(true); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-red-950/60 text-red-300 hover:bg-red-900 border border-red-800">
+                <Trash2 size={12} /> Limpar Banco
+              </button>
+              <span className="text-xs text-slate-500 self-center">{records.length} registro(s) salvos</span>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Field label="Data da preventiva" icon={<Calendar size={14} />}>
                 <input type="date" value={data} onChange={(e) => setData(e.target.value)}
@@ -718,16 +793,53 @@ export default function App() {
             <div className="border border-slate-800 rounded-lg p-4">
               <span className="text-sm font-medium block mb-3">Medição de Corrente do Quadro</span>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <Field label="Tensão AC (V)">
-                  <input type="text" value={tensaoAC} onChange={(e) => setTensaoAC(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
-                </Field>
-                <Field label="Tensão DC (V)">
-                  <input type="text" value={tensaoDC} onChange={(e) => setTensaoDC(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
-                </Field>
                 {isViaAB(tipo) ? (
                   <>
+                    <Field label="Tensão AC (V)">
+                      <input type="text" value={tensaoAC} onChange={(e) => setTensaoAC(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
+                    </Field>
+                    <Field label="Tensão DC (V)">
+                      <input type="text" value={tensaoDC} onChange={(e) => setTensaoDC(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
+                    </Field>
+                  </>
+                ) : (
+                  <>
+                    <Field label="Tensão (V) Fase R">
+                      <input type="text" value={tensaoR} onChange={(e) => setTensaoR(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
+                    </Field>
+                    <Field label="Tensão (V) Fase S">
+                      <input type="text" value={tensaoS} onChange={(e) => setTensaoS(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
+                    </Field>
+                    <Field label="Tensão (V) Fase T">
+                      <input type="text" value={tensaoT} onChange={(e) => setTensaoT(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
+                    </Field>
+                    <div className="sm:col-span-full mt-1 mb-1 text-[11px] uppercase tracking-wider text-slate-500">
+                      Tensão composta (entre fases)
+                    </div>
+                    <Field label="Tensão (V) Fase RS">
+                      <input type="text" value={tensaoRS} onChange={(e) => setTensaoRS(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
+                    </Field>
+                    <Field label="Tensão (V) Fase ST">
+                      <input type="text" value={tensaoST} onChange={(e) => setTensaoST(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
+                    </Field>
+                    <Field label="Tensão (V) Fase TR">
+                      <input type="text" value={tensaoTR} onChange={(e) => setTensaoTR(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
+                    </Field>
+                  </>
+                )}
+                {isViaAB(tipo) ? (
+                  <>
+                    <div className="sm:col-span-full mt-1 mb-1 text-[11px] uppercase tracking-wider text-slate-500">
+                      Correntes (soma automática dos disjuntores)
+                    </div>
                     <Field label="Corrente Total Via A (A)">
                       <input type="number" step="0.1" value={correnteViaA} readOnly
                         className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
@@ -743,6 +855,9 @@ export default function App() {
                   </>
                 ) : usesTresFases(tipo) ? (
                   <>
+                    <div className="sm:col-span-full mt-1 mb-1 text-[11px] uppercase tracking-wider text-slate-500">
+                      Correntes por Fase (soma automática dos disjuntores)
+                    </div>
                     <Field label="Fase R (A)">
                       <input type="number" step="0.1" value={correnteR} readOnly
                         className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
@@ -979,6 +1094,84 @@ export default function App() {
           </div>
         )}
 
+        {showClearModal && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-20">
+            <div className="bg-slate-900 border border-red-900/60 rounded-lg max-w-md w-full p-6 shadow-2xl shadow-red-900/20">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-red-950 border border-red-800 flex items-center justify-center">
+                    <AlertTriangle size={20} className="text-red-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-lg text-red-100">Limpar Banco de Dados</h3>
+                    <p className="text-xs text-slate-500">Modo atual: {saveMode === "local" ? "Local" : user?.email || "Firebase"}</p>
+                  </div>
+                </div>
+                <button onClick={() => { setShowClearModal(false); setClearConfirmText(""); setClearProgress(null); }} className="text-slate-400 hover:text-white"><X size={18} /></button>
+              </div>
+
+              <div className="text-sm text-slate-400 mb-4 space-y-2">
+                <p>
+                  Esta ação irá <span className="text-red-400 font-semibold">APAGAR TODOS os {records.length} registro(s)</span> existentes
+                  {saveMode === "local"
+                    ? " no armazenamento LOCAL deste dispositivo."
+                    : " no BANCO DE DADOS FIREBASE associado à sua conta."}
+                </p>
+                <div className="text-xs bg-slate-950 border border-slate-800 rounded px-3 py-2 text-yellow-400/90">
+                  ⚠ Esta ação é irreversível. Recomenda-se EXPORTAR um backup JSON antes de continuar.
+                </div>
+              </div>
+
+              {clearProgress ? (
+                <div className="mb-4">
+                  <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+                    <span>Apagando...</span>
+                    <span>{clearProgress.done}/{clearProgress.total}</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-red-600 transition-all duration-200"
+                      style={{ width: `${clearProgress.total ? (clearProgress.done / clearProgress.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <label className="block text-xs text-slate-500 uppercase tracking-wide mb-1.5">
+                    Confirmação: digite <span className="text-red-400 font-bold">LIMPAR</span> abaixo
+                  </label>
+                  <input
+                    type="text"
+                    value={clearConfirmText}
+                    onChange={(e) => setClearConfirmText(e.target.value)}
+                    placeholder='Digite "LIMPAR"'
+                    className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono mb-3 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-red-600 tracking-widest"
+                    autoFocus
+                  />
+                </>
+              )}
+
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => { setShowClearModal(false); setClearConfirmText(""); setClearProgress(null); }}
+                  disabled={!!clearProgress}
+                  className="px-4 py-2 text-sm rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleClearAll}
+                  disabled={!!clearProgress || clearConfirmText.trim() !== "LIMPAR"}
+                  className="px-4 py-2 text-sm rounded bg-red-700 hover:bg-red-600 text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-red-500/40"
+                >
+                  <Trash2 size={14} />
+                  {clearProgress ? "Apagando..." : "Apagar TUDO"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {toast && (
           <div className="fixed top-4 right-4 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-green-400 shadow-lg z-30">
             {toast}
@@ -1000,25 +1193,72 @@ export default function App() {
                   <Info label="Temperatura" value={`${viewRecord.temperatura}°C`} />
                 </div>
 
-                {viewRecord.medicaoCorrente && (
-                  <div className="border border-slate-800 rounded p-3">
-                    <div className="text-xs text-slate-400 uppercase mb-2">Medição de Corrente do Quadro</div>
-                    {"viaA" in viewRecord.medicaoCorrente ? (
-                      <div className="grid grid-cols-3 gap-3 text-sm">
-                        <Info label="Via A" value={`${viewRecord.medicaoCorrente.viaA || "-"} A`} />
-                        <Info label="Via B" value={`${viewRecord.medicaoCorrente.viaB || "-"} A`} />
-                        <Info label="Geral" value={`${viewRecord.medicaoCorrente.geral || "-"} A`} />
+                <div className="border border-slate-800 rounded p-3">
+                  <div className="text-xs text-slate-400 uppercase mb-3">Medição Elétrica do Quadro</div>
+                  {isViaAB(viewRecord.tipo) ? (
+                    <>
+                      <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">Tensões</div>
+                      <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                        <Info label="Tensão AC" value={`${viewRecord.tensaoAC || "-"} V`} />
+                        <Info label="Tensão DC" value={`${viewRecord.tensaoDC || "-"} V`} />
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                        <Info label="Total" value={`${viewRecord.medicaoCorrente.total || "-"} A`} />
-                        <Info label="Fase R" value={`${viewRecord.medicaoCorrente.r || "-"} A`} />
-                        <Info label="Fase S" value={`${viewRecord.medicaoCorrente.s || "-"} A`} />
-                        <Info label="Fase T" value={`${viewRecord.medicaoCorrente.t || "-"} A`} />
+                      {viewRecord.medicaoCorrente && "viaA" in viewRecord.medicaoCorrente && (
+                        <>
+                          <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">
+                            Correntes (soma automática dos disjuntores)
+                          </div>
+                          <div className="grid grid-cols-3 gap-3 text-sm">
+                            <Info label="Via A" value={`${viewRecord.medicaoCorrente.viaA || "-"} A`} />
+                            <Info label="Via B" value={`${viewRecord.medicaoCorrente.viaB || "-"} A`} />
+                            <Info label="Geral" value={`${viewRecord.medicaoCorrente.geral || "-"} A`} />
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">Tensão por Fase</div>
+                      <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+                        <Info label="Fase R" value={`${viewRecord.tensaoR || "-"} V`} />
+                        <Info label="Fase S" value={`${viewRecord.tensaoS || "-"} V`} />
+                        <Info label="Fase T" value={`${viewRecord.tensaoT || "-"} V`} />
                       </div>
-                    )}
-                  </div>
-                )}
+                      <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">
+                        Tensão composta (entre fases)
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+                        <Info label="Fase RS" value={`${viewRecord.tensaoRS || "-"} V`} />
+                        <Info label="Fase ST" value={`${viewRecord.tensaoST || "-"} V`} />
+                        <Info label="Fase TR" value={`${viewRecord.tensaoTR || "-"} V`} />
+                      </div>
+                      {viewRecord.medicaoCorrente && (
+                        <>
+                          <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">
+                            Correntes por Fase (soma automática dos disjuntores)
+                          </div>
+                          {"r" in viewRecord.medicaoCorrente ? (
+                            <>
+                              <div className="grid grid-cols-3 gap-3 text-sm">
+                                <Info label="Fase R" value={`${viewRecord.medicaoCorrente.r || "-"} A`} />
+                                <Info label="Fase S" value={`${viewRecord.medicaoCorrente.s || "-"} A`} />
+                                <Info label="Fase T" value={`${viewRecord.medicaoCorrente.t || "-"} A`} />
+                              </div>
+                              {typeof viewRecord.medicaoCorrente.total !== "undefined" && viewRecord.medicaoCorrente.total !== null && (
+                                <div className="mt-3 text-xs text-slate-400">
+                                  Corrente Total: <span className="font-mono text-red-400">{viewRecord.medicaoCorrente.total || "-"} A</span>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-3 text-sm">
+                              <Info label="Corrente Total" value={`${viewRecord.medicaoCorrente.total || "-"} A`} />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
 
                 <table className="w-full text-sm mt-2">
                   <thead className="text-slate-400 text-xs uppercase">
@@ -1075,6 +1315,20 @@ export default function App() {
 }
 
 function Readout({ label, value, accent }: { label: string, value: any, accent?: boolean }) {
+  const isOnline = label === 'ONLINE';
+
+  if (isOnline) {
+    return (
+      <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-300 shadow-sm">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+        </span>
+        <span>{value}</span>
+      </div>
+    );
+  }
+
   return (
     <div className="text-right">
       <div className="text-[10px] text-slate-500 tracking-wider">{label}</div>

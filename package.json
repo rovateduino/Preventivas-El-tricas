@@ -42,5 +42,9 @@
       "artifactName": "${productName} ${version} Portable.exe"
     },
     "compression": "store"
+  },
+  "devDependencies": {
+    "electron": "^41.7.1",
+    "electron-builder": "^26.15.3"
   }
 }
