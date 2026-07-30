@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { login, register } from '../lib/auth';
-import { Shield, Database, LogIn, UserPlus, Home, Download, Github, ExternalLink, Sparkles } from 'lucide-react';
+import {
+  Shield, Database, LogIn, UserPlus, Home, Download, Sparkles,
+  X, Info, Zap, FileCheck, Cloud, Lock, FolderOpen, Smartphone, Wrench, Award, CheckCircle2
+} from 'lucide-react';
 
 export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void; onSwitchMode?: () => void }) {
   const [email, setEmail] = useState('');
@@ -8,6 +11,18 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
   const [error, setError] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+
+  useEffect(() => {
+    if (!showAbout) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setShowAbout(false); };
+    window.addEventListener("keydown", handler);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handler);
+      document.body.style.overflow = "";
+    };
+  }, [showAbout]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +42,17 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
       setLoading(false);
     }
   };
+
+  const appFeatures = [
+    { icon: Zap, color: "text-amber-400", bg: "from-amber-500/20 to-orange-500/10", ring: "ring-amber-400/20", title: "Cálculo Automático", desc: "Soma total de correntes por via ou fase em tempo real, conforme tipo de quadro." },
+    { icon: FileCheck, color: "text-emerald-400", bg: "from-emerald-500/20 to-teal-500/10", ring: "ring-emerald-400/20", title: "Relatório Profissional", desc: "Imprima ou salve em PDF o relatório completo com layout técnico elegante." },
+    { icon: Cloud, color: "text-cyan-400", bg: "from-cyan-500/20 to-sky-500/10", ring: "ring-cyan-400/20", title: "Nuvem ou Local", desc: "Use Firebase Firestore por usuário ou armazene apenas neste computador." },
+    { icon: Lock, color: "text-rose-400", bg: "from-rose-500/20 to-red-500/10", ring: "ring-rose-400/20", title: "Segurança Total", desc: "Executável assinado digitalmente e autenticação por usuário UID." },
+    { icon: FolderOpen, color: "text-violet-400", bg: "from-violet-500/20 to-purple-500/10", ring: "ring-violet-400/20", title: "Backup JSON", desc: "Exporte e importe todos os registros com 1 clique, incluindo disjuntores." },
+    { icon: Wrench, color: "text-blue-400", bg: "from-blue-500/20 to-indigo-500/10", ring: "ring-blue-400/20", title: "Multi-quadro", desc: "QDF, QDCC, PDT e OUTRO com campos de tensão dinâmicos (AC/DC ou R/S/T + compostas)." },
+    { icon: Smartphone, color: "text-pink-400", bg: "from-pink-500/20 to-fuchsia-500/10", ring: "ring-pink-400/20", title: "Portátil", desc: "Executável único — sem instalação, clique e use em qualquer Windows x64." },
+    { icon: Award, color: "text-yellow-400", bg: "from-yellow-500/20 to-amber-500/10", ring: "ring-yellow-400/20", title: "Campos Ilimitados", desc: "Tabela com 1 a 60 disjuntores, multi-empresa e multi-site configuráveis." },
+  ];
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden text-slate-100">
@@ -98,11 +124,10 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
           </div>
 
           <div className="w-full max-w-md mx-auto lg:mx-0 lg:justify-self-start lg:self-center lg:mt-4">
-            <a
-              href="https://github.com/rovateduino/Preventivas-El-tricas/releases/download/v1.0.0/Preventivas.Eletricas.1.0.0.Portable.exe"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block group relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-slate-900/85 via-slate-900/75 to-slate-950/85 backdrop-blur-2xl p-6 sm:p-7 shadow-2xl shadow-black/40 transition-all duration-300 hover:border-emerald-400/50 hover:shadow-[0_0_50px_-15px_rgba(16,185,129,0.45)]"
+            <button
+              type="button"
+              onClick={() => setShowAbout(true)}
+              className="w-full group text-left relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-slate-900/85 via-slate-900/75 to-slate-950/85 backdrop-blur-2xl p-6 sm:p-7 shadow-2xl shadow-black/40 transition-all duration-300 hover:border-emerald-400/50 hover:shadow-[0_0_50px_-15px_rgba(16,185,129,0.45)]"
             >
               <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-emerald-500/10 blur-3xl transition-opacity group-hover:opacity-90" />
               <div className="absolute -left-16 -bottom-20 h-44 w-44 rounded-full bg-cyan-500/10 blur-3xl transition-opacity group-hover:opacity-90" />
@@ -135,20 +160,18 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
 
               <div className="relative mt-5 grid grid-cols-2 gap-3 text-[11px] sm:text-xs">
                 <div className="rounded-xl border border-slate-700/60 bg-slate-950/40 px-3 py-2.5 flex items-center gap-2">
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" className="shrink-0">
-                    <rect x="0.5" y="4.5" width="2.5" height="7" rx="0.8" fill="#10B981"/>
-                    <rect x="4.75" y="2" width="2.5" height="9.5" rx="0.8" fill="#14B8A6"/>
-                    <rect x="9" y="5.5" width="2.5" height="6" rx="0.8" fill="#06B6D4"/>
-                  </svg>
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/25 to-indigo-500/10 ring-1 ring-violet-400/20">
+                    <Smartphone size={13} className="text-violet-300" />
+                  </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-slate-500 text-[10px] uppercase tracking-wider">Hospedado no</span>
-                    <span className="text-slate-200 font-semibold leading-tight truncate">GitHub Release</span>
+                    <span className="text-slate-500 text-[10px] uppercase tracking-wider">Formato</span>
+                    <span className="text-slate-200 font-semibold leading-tight truncate">Portátil Windows</span>
                   </div>
                 </div>
                 <div className="rounded-xl border border-emerald-700/30 bg-emerald-950/20 px-3 py-2.5 flex items-center gap-2">
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" className="shrink-0 text-emerald-400">
-                    <path d="M2.2 6.25 4.85 8.9l4.95-5.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/30 to-teal-500/10 ring-1 ring-emerald-400/20">
+                    <CheckCircle2 size={13} className="text-emerald-300" />
+                  </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-emerald-400/80 text-[10px] uppercase tracking-wider">Segurança</span>
                     <span className="text-emerald-100 font-semibold leading-tight truncate">Assinado digitalmente</span>
@@ -157,37 +180,158 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
               </div>
 
               <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-slate-700/50 pt-4">
-                <span
-                  role="button"
-                  tabIndex={0}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300 underline-offset-2 hover:text-emerald-300 hover:underline transition-colors cursor-pointer focus:outline-none focus-visible:text-emerald-300 focus-visible:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    window.open("https://github.com/rovateduino/Preventivas-El-tricas/releases/tag/v1.0.0", "_blank", "noopener,noreferrer");
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      window.open("https://github.com/rovateduino/Preventivas-El-tricas/releases/tag/v1.0.0", "_blank", "noopener,noreferrer");
-                    }
-                  }}
-                >
-                  <Github size={13} className="text-slate-400" />
-                  Ver página da release
-                  <ExternalLink size={11} className="text-slate-500" />
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-800/60 border border-slate-700/70">
+                  <Info size={13} className="text-emerald-400" />
+                  Sobre o App
                 </span>
                 <span className="inline-flex items-center gap-1.5 font-bold text-emerald-300 text-sm sm:text-base transition-transform group-hover:translate-x-1">
-                  Baixar agora
+                  Abrir informações
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h9.5M7.25 3.75 12.5 8l-5.25 4.25" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </span>
               </div>
-            </a>
+            </button>
           </div>
 
         </div>
       </div>
+
+      {showAbout && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 sm:py-10"
+          onClick={() => setShowAbout(false)}
+          aria-modal="true"
+          role="dialog"
+        >
+          <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-md" aria-hidden="true" />
+          <div
+            className="relative z-10 w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-700/60 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 shadow-2xl shadow-black/60 ring-1 ring-black/40"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="absolute inset-x-0 top-0 h-48 rounded-t-3xl bg-cover bg-center opacity-25 pointer-events-none"
+              style={{ backgroundImage: "url('/fundo-site.png')" }}
+              aria-hidden="true"
+            />
+            <div className="absolute inset-x-0 top-0 h-48 rounded-t-3xl bg-gradient-to-b from-emerald-900/40 via-slate-900/70 to-slate-900 pointer-events-none" aria-hidden="true" />
+
+            <div className="relative px-5 sm:px-8 py-6 sm:py-8">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-950/50 ring-1 ring-emerald-300/30">
+                    <Shield size={30} className="text-white" strokeWidth={2.1} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                      <span className="inline-flex items-center rounded-sm bg-red-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-red-300 ring-1 ring-inset ring-red-400/25">
+                        Elétrica
+                      </span>
+                      <span className="inline-flex items-center rounded-md bg-cyan-500/12 px-2 py-0.5 text-[10px] font-mono font-semibold text-cyan-300 ring-1 ring-inset ring-cyan-400/25">
+                        v1.0.0
+                      </span>
+                      <span className="inline-flex items-center rounded-md bg-slate-800/70 px-2 py-0.5 text-[10px] font-semibold text-slate-300 ring-1 ring-inset ring-slate-600/50">
+                        Build · Jul 2026
+                      </span>
+                    </div>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight tracking-tight">
+                      Preventivas Elétricas
+                    </h2>
+                    <p className="text-sm text-slate-400 mt-1.5 leading-relaxed max-w-xl">
+                      Sistema desktop profissional para cadastro, medição e relatórios de manutenção preventiva
+                      em quadros elétricos. Controle disjuntores, tensões, correntes e documentação técnica completa.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAbout(false)}
+                  aria-label="Fechar"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-700/60 bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700 hover:border-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+                >
+                  <X size={17} />
+                </button>
+              </div>
+
+              <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-center">
+                <div className="rounded-xl border border-slate-700/50 bg-slate-950/50 px-2.5 py-3">
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Tipos de Quadro</div>
+                  <div className="text-xl font-black text-emerald-300 leading-tight">4</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">QDF / QDCC / PDT / OUTRO</div>
+                </div>
+                <div className="rounded-xl border border-slate-700/50 bg-slate-950/50 px-2.5 py-3">
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Disjuntores</div>
+                  <div className="text-xl font-black text-cyan-300 leading-tight">1–60</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">por registro dinâmico</div>
+                </div>
+                <div className="rounded-xl border border-slate-700/50 bg-slate-950/50 px-2.5 py-3">
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Armazenamento</div>
+                  <div className="text-xl font-black text-amber-300 leading-tight">2</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Nuvem · Local</div>
+                </div>
+                <div className="rounded-xl border border-slate-700/50 bg-slate-950/50 px-2.5 py-3">
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Compatibilidade</div>
+                  <div className="text-xl font-black text-rose-300 leading-tight">Win x64</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">10 · 11</div>
+                </div>
+              </div>
+
+              <div className="mt-7">
+                <div className="flex items-center gap-2 mb-3.5">
+                  <span className="h-[2px] w-8 rounded bg-gradient-to-r from-emerald-500 to-transparent" />
+                  <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                    Recursos Principais
+                  </h3>
+                </div>
+                <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-2">
+                  {appFeatures.map((f, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 rounded-xl border border-slate-700/50 bg-slate-950/40 p-3 sm:p-3.5 hover:border-slate-600/70 hover:bg-slate-900/60 transition-colors"
+                    >
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${f.bg} ring-1 ring-inset ${f.ring}`}>
+                        <f.icon size={17} className={f.color} strokeWidth={2} />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-slate-100 leading-snug">{f.title}</h4>
+                        <p className="text-[12px] text-slate-400 mt-0.5 leading-snug">{f.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-7 rounded-2xl border border-emerald-700/25 bg-gradient-to-br from-emerald-950/30 via-slate-900/80 to-teal-950/20 p-4 sm:p-5 shadow-inner shadow-emerald-950/20">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/30 to-teal-500/10 ring-1 ring-emerald-300/20">
+                      <Award size={22} className="text-emerald-300" />
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-wider text-emerald-400/80 font-bold">Garantia de Qualidade</div>
+                      <div className="text-sm font-bold text-emerald-100 mt-0.5">Executável assinado · Relatórios técnicos · Backup sempre</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => setShowAbout(false)}
+                      className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl hover:from-emerald-400 hover:to-teal-500 transition-colors shadow-lg shadow-emerald-950/40"
+                    >
+                      <CheckCircle2 size={15} /> Entendi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAbout(false)}
+                      className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-slate-200 rounded-xl border border-slate-600/70 bg-slate-800/60 hover:bg-slate-700/70 hover:text-white transition-colors"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
