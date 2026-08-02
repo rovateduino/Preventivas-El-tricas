@@ -81,7 +81,7 @@ function buildReportHTML(record: any) {
       ? `
         <tr><td>Corrente Total Via A</td><td>${mc.viaA || "-"} A</td></tr>
         <tr><td>Corrente Total Via B</td><td>${mc.viaB || "-"} A</td></tr>
-        <tr><td>Corrente Geral</td><td>${mc.geral || "-"} A</td></tr>`
+        <tr><td>Corrente Total Via A + Via B</td><td>${mc.geral || "-"} A</td></tr>`
       : `
         <tr><td>Corrente Total</td><td>${mc.total || "-"} A</td></tr>
         ${tresFases ? `<tr><td>Corrente Fase R</td><td>${mc.r || "-"} A</td></tr>` : `<tr><td>Corrente R</td><td>${mc.r || "-"} A</td></tr>`}
@@ -91,8 +91,8 @@ function buildReportHTML(record: any) {
 
   const tensaoRows = viaAB
     ? `
-      <tr><td>Tensão AC</td><td>${record.tensaoAC || "-"} V</td></tr>
-      <tr><td>Tensão DC</td><td>${record.tensaoDC || "-"} V</td></tr>`
+      <tr><td>TENSÃO DC</td><td>${record.tensaoAC || "-"} V</td></tr>
+      <tr><td>Corrente Geral DC</td><td>${record.tensaoDC || "-"} V</td></tr>`
     : `
       <tr><td>Tensão Fase R</td><td>${record.tensaoR || "-"} V</td></tr>
       <tr><td>Tensão Fase S</td><td>${record.tensaoS || "-"} V</td></tr>
@@ -795,11 +795,11 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 {isViaAB(tipo) ? (
                   <>
-                    <Field label="Tensão AC (V)">
+                    <Field label="TENSÃO DC">
                       <input type="text" value={tensaoAC} onChange={(e) => setTensaoAC(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
                     </Field>
-                    <Field label="Tensão DC (V)">
+                    <Field label="Corrente Geral DC">
                       <input type="text" value={tensaoDC} onChange={(e) => setTensaoDC(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
                     </Field>
@@ -848,7 +848,7 @@ export default function App() {
                       <input type="number" step="0.1" value={correnteViaB} readOnly
                         className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
                     </Field>
-                    <Field label="Corrente Geral (A)">
+                    <Field label="Corrente Total Via A + Via B (A)">
                       <input type="number" step="0.1" value={correnteGeral} readOnly
                         className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
                     </Field>
@@ -1199,8 +1199,8 @@ export default function App() {
                     <>
                       <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">Tensões</div>
                       <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                        <Info label="Tensão AC" value={`${viewRecord.tensaoAC || "-"} V`} />
-                        <Info label="Tensão DC" value={`${viewRecord.tensaoDC || "-"} V`} />
+                        <Info label="TENSÃO DC" value={`${viewRecord.tensaoAC || "-"} V`} />
+                        <Info label="Corrente Geral DC" value={`${viewRecord.tensaoDC || "-"} V`} />
                       </div>
                       {viewRecord.medicaoCorrente && "viaA" in viewRecord.medicaoCorrente && (
                         <>
@@ -1210,7 +1210,7 @@ export default function App() {
                           <div className="grid grid-cols-3 gap-3 text-sm">
                             <Info label="Via A" value={`${viewRecord.medicaoCorrente.viaA || "-"} A`} />
                             <Info label="Via B" value={`${viewRecord.medicaoCorrente.viaB || "-"} A`} />
-                            <Info label="Geral" value={`${viewRecord.medicaoCorrente.geral || "-"} A`} />
+                            <Info label="Via A + Via B" value={`${viewRecord.medicaoCorrente.geral || "-"} A`} />
                           </div>
                         </>
                       )}
