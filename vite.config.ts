@@ -9,6 +9,19 @@ export default defineConfig(() => {
     build: {
       outDir: 'dist-web',
       emptyOutDir: true,
+      chunkSizeWarningLimit: 500,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('firebase')) return 'firebase';
+              if (id.includes('jspdf')) return 'jspdf';
+              if (id.includes('lucide-react')) return 'icons';
+              return 'vendor';
+            }
+          }
+        }
+      }
     },
     plugins: [react(), tailwindcss()],
     resolve: {
