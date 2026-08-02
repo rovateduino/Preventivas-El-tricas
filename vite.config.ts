@@ -14,9 +14,13 @@ export default defineConfig(() => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              if (id.includes('firebase')) return 'firebase';
               if (id.includes('jspdf')) return 'jspdf';
               if (id.includes('lucide-react')) return 'icons';
+              if (id.includes('@firebase') || id.includes('firebase')) {
+                if (id.includes('firestore')) return 'firebase-firestore';
+                if (id.includes('auth')) return 'firebase-auth';
+                return 'firebase-core';
+              }
               return 'vendor';
             }
           }
