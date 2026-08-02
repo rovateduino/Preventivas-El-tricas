@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Zap, Thermometer, Ticket, Search, Plus, Trash2, FileDown, X, Filter, Calendar, ChevronDown, Save, AlertTriangle, LogOut, Download, Upload } from "lucide-react";
 import { subscribeToAuthChanges, logout } from './lib/auth';
 import { getPreventivas, savePreventiva, deletePreventiva, importPreventivas, deleteAllPreventivas } from './lib/preventivaService';
 import { exportToJSON, importFromJSON } from './lib/dataExport';
-import { db } from './lib/firebase';
 import { User } from 'firebase/auth';
-import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import Login from './components/Login';
 import { STORAGE_KEY, MODE_KEY } from './lib/constants';
+import { createInvite, getUserProfile, isFirstAdminAvailable } from './lib/userService';
 
 const SITES = [
   ...["Artur Alvim|AAL","Atibaia|AIA","Água Rasa|ARA","Bragança Paulista|BGP","Bangu|BGU","Bom Retiro|BRE",
@@ -177,13 +176,58 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  const refreshFirstAdminAvailable = async () => {
+    try {
+      const available = await isFirstAdminAvailable();
+      setFirstAdminAvailable(available);
+    } catch (err) {
+      console.error('Erro ao verificar disponibilidade do primeiro admin:', err);
+      setFirstAdminAvailable(false);
+    }
+  };
+
   useEffect(() => {
-    const unsubscribe = subscribeToAuthChanges((u) => {
-      setUser(u);
-      setAuthLoading(false);
+    const unsubscribe = subscribeToAuthChanges(async (u) => {
+      if (!u) {
+        setUser(null);
+        setUserRole(null);
+        setAuthError(null);
+        setAuthLoading(false);
+        return;
+      }
+
+      try {
+        const profile = await getUserProfile(u.uid);
+        if (!profile) {
+          await logout();
+          setUser(null);
+          setUserRole(null);
+          setAuthError('Conta não autorizada. Cadastre-se com um convite válido ou peça autorização ao administrador.');
+        } else {
+          setUser(u);
+          setUserRole(profile.role);
+          setAuthError(null);
+        }
+      } catch (e) {
+        console.error('Erro ao carregar perfil de usuário:', e);
+        await logout();
+        setUser(null);
+        setUserRole(null);
+        setAuthError('Falha ao validar autorização. Tente novamente.');
+      } finally {
+        setAuthLoading(false);
+      }
     });
+
+    refreshFirstAdminAvailable();
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!authLoading) {
+      refreshFirstAdminAvailable();
+    }
+  }, [authLoading, user]);
 
   const [tab, setTab] = useState("novo");
   const [records, setRecords] = useState<any[]>([]);
@@ -193,6 +237,13 @@ export default function App() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [viewRecord, setViewRecord] = useState<any>(null);
   const [firebaseSyncError, setFirebaseSyncError] = useState('');
+  const [userRole, setUserRole] = useState<'user' | 'admin' | null>(null);
+  const [inviteToken, setInviteToken] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [firstAdminAvailable, setFirstAdminAvailable] = useState<boolean | null>(null);
+  const [inviteCreatedAt, setInviteCreatedAt] = useState<number | null>(null);
 
   const [data, setData] = useState("");
   const [tipo, setTipo] = useState("PDT");
@@ -230,6 +281,7 @@ export default function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [clearConfirmText, setClearConfirmText] = useState("");
   const [clearProgress, setClearProgress] = useState<{ total: number; done: number } | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -255,7 +307,20 @@ export default function App() {
     setTimeout(() => setToast(""), 3000);
   };
 
+  useEffect(() => {
+    if (inviteToken) {
+      const timer = setTimeout(() => {
+        setInviteToken('');
+        setInviteCreatedAt(null);
+      }, 15000);
+      return () => clearTimeout(timer);
+    }
+  }, [inviteToken]);
 
+  useEffect(() => {
+    setInviteToken('');
+    setInviteCreatedAt(null);
+  }, [tab]);
 
   useEffect(() => {
     const loadRecords = async () => {
@@ -585,6 +650,12 @@ export default function App() {
   }
 
   async function handleClearAll() {
+    if (userRole !== 'admin') {
+      showToast('Apenas administradores podem limpar o banco de dados.');
+      setShowClearModal(false);
+      return;
+    }
+
     if (clearConfirmText.trim() !== "LIMPAR") {
       showToast('Digite "LIMPAR" para confirmar.');
       return;
@@ -639,10 +710,10 @@ export default function App() {
 
   if (authLoading) return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Carregando...</div>;
   if (saveMode === "firebase" && !user) {
-    return <Login onLogin={() => {}} onSwitchMode={() => setSaveMode('local')} />;
+    return <Login onSwitchMode={() => setSaveMode('local')} externalError={authError || undefined} allowFirstAdminSignup={firstAdminAvailable} />;
   }
 
-  const userLabel = user ? user.email : 'Modo local';
+  const userLabel = user ? `${user.email}${userRole === 'admin' ? ' (Administrador)' : ''}` : 'Modo local';
 
   const handleHeaderAction = () => {
     if (user) {
@@ -720,12 +791,29 @@ export default function App() {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
                 <Upload size={12} /> Importar JSON
               </button>
-              <button type="button" onClick={() => { setClearConfirmText(""); setClearProgress(null); setShowClearModal(true); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-red-950/60 text-red-300 hover:bg-red-900 border border-red-800">
-                <Trash2 size={12} /> Limpar Banco
-              </button>
+              {userRole === 'admin' && (
+                <button type="button" onClick={() => { setClearConfirmText(""); setClearProgress(null); setShowClearModal(true); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-red-950/60 text-red-300 hover:bg-red-900 border border-red-800">
+                  <Trash2 size={12} /> Limpar Banco
+                </button>
+              )}
+              {userRole === 'admin' && (
+                <button type="button" onClick={() => {
+                  setInviteError('');
+                  setInviteToken('');
+                  setShowInviteModal(true);
+                }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-emerald-950/70 text-emerald-300 hover:bg-emerald-900 border border-emerald-800">
+                  <Plus size={12} /> Gerar convite
+                </button>
+              )}
               <span className="text-xs text-slate-500 self-center">{records.length} registro(s) salvos</span>
             </div>
+            {inviteError && (
+              <div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-xs text-red-200 mt-3">
+                {inviteError}
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Field label="Data da preventiva" icon={<Calendar size={14} />}>
                 <input type="date" value={data} onChange={(e) => setData(e.target.value)}
@@ -1094,6 +1182,51 @@ export default function App() {
           </div>
         )}
 
+        {showInviteModal && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-20">
+            <div className="bg-slate-900 border border-emerald-700/60 rounded-lg max-w-md w-full p-6 shadow-2xl shadow-emerald-900/20">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-medium text-lg">Gerar convite de usuário</h3>
+                  <p className="text-xs text-slate-500">Crie um código temporário para permitir o cadastro de um novo usuário no Firebase.</p>
+                </div>
+                <button onClick={() => { setShowInviteModal(false); setInviteToken(''); setInviteError(''); setInviteCreatedAt(null); }} className="text-slate-400 hover:text-white"><X size={18} /></button>
+              </div>
+              {inviteError && (
+                <div className="text-sm text-red-400 bg-red-950/30 border border-red-900 rounded px-3 py-2 mb-4">{inviteError}</div>
+              )}
+              {inviteToken ? (
+                <div className="rounded-lg border border-emerald-700 bg-emerald-950/40 p-4 text-xs text-emerald-200 mb-4">
+                  <div className="font-semibold text-emerald-100 mb-2">Convite criado</div>
+                  <div className="font-mono break-all">{inviteToken}</div>
+                </div>
+              ) : (
+                <div className="text-sm text-slate-300 mb-4">
+                  Clique em Gerar para criar um novo convite. Copie o token e compartilhe com quem deve se cadastrar.
+                </div>
+              )}
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => { setShowInviteModal(false); setInviteToken(''); setInviteError(''); setInviteCreatedAt(null); }} className="px-4 py-2 text-sm rounded border border-slate-700 text-slate-300 hover:bg-slate-800">Cancelar</button>
+                <button type="button" disabled={inviteLoading} onClick={async () => {
+                  setInviteLoading(true);
+                  setInviteError('');
+                  try {
+                    const token = await createInvite('user', user!.uid);
+                    setInviteToken(token);
+                    setInviteCreatedAt(Date.now());
+                  } catch (err) {
+                    console.error('Erro ao gerar convite:', err);
+                    setInviteError('Falha ao gerar convite.');
+                  } finally {
+                    setInviteLoading(false);
+                  }
+                }} className="px-4 py-2 text-sm rounded bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-60 disabled:cursor-not-allowed">
+                  {inviteLoading ? 'Gerando...' : 'Gerar convite'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {showClearModal && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-20">
             <div className="bg-slate-900 border border-red-900/60 rounded-lg max-w-md w-full p-6 shadow-2xl shadow-red-900/20">

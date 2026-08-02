@@ -1,13 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { FirebaseError } from 'firebase/app';
 import { login, register } from '../lib/auth';
+import { createUserProfile, getInvite, markInviteAsUsed, markFirstAdminCreated } from '../lib/userService';
 import {
   Shield, Database, LogIn, UserPlus, Home, Download, Sparkles,
   X, Info, Zap, FileCheck, Cloud, Lock, FolderOpen, Smartphone, Wrench, Award, CheckCircle2
 } from 'lucide-react';
 
-export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void; onSwitchMode?: () => void }) {
+type LoginProps = {
+  onLogin?: () => void;
+  onSwitchMode?: () => void;
+  externalError?: string;
+  allowFirstAdminSignup?: boolean | null;
+};
+
+export default function Login({ onLogin, onSwitchMode, externalError, allowFirstAdminSignup }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [inviteToken, setInviteToken] = useState('');
   const [error, setError] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,14 +40,51 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
     setLoading(true);
     try {
       if (isRegistering) {
-        await register(email, password);
+        if (allowFirstAdminSignup === null) {
+          setError('Aguarde a validação do primeiro administrador antes de tentar cadastrar.');
+          return;
+        }
+
+        if (!allowFirstAdminSignup) {
+          if (!inviteToken.trim()) {
+            setError('Informe o token de convite enviado pelo administrador.');
+            return;
+          }
+
+          const invite = await getInvite(inviteToken.trim());
+          if (!invite || invite.used) {
+            setError('Token inválido ou já utilizado. Peça um novo convite ao administrador.');
+            return;
+          }
+
+          const credential = await register(email, password);
+          await createUserProfile(credential.user.uid, invite.role, inviteToken.trim(), email);
+          await markInviteAsUsed(inviteToken.trim(), credential.user.uid, email);
+        } else {
+          const credential = await register(email, password);
+          await createUserProfile(credential.user.uid, 'admin', null, email);
+          await markFirstAdminCreated(credential.user.uid);
+        }
       } else {
         await login(email, password);
       }
+
       onLogin?.();
     } catch (err) {
-      console.error("Auth error:", err);
-      setError(`Erro ao ${isRegistering ? 'registrar' : 'fazer login'}: ${err instanceof Error ? err.message : 'Verifique suas credenciais.'}`);
+      console.error('Auth error:', err);
+      if (err instanceof FirebaseError) {
+        if (err.code === 'auth/email-already-in-use') {
+          setError('Erro ao registrar: este e-mail já está em uso. Use outro e-mail ou recupere a senha.');
+        } else if (err.code === 'auth/invalid-email') {
+          setError('Erro ao registrar: e-mail inválido. Verifique o endereço informado.');
+        } else if (err.code === 'auth/weak-password') {
+          setError('Erro ao registrar: a senha é muito fraca. Use pelo menos 6 caracteres.');
+        } else {
+          setError(`Erro ao ${isRegistering ? 'registrar' : 'fazer login'}: ${err.message}`);
+        }
+      } else {
+        setError(`Erro ao ${isRegistering ? 'registrar' : 'fazer login'}: ${err instanceof Error ? err.message : 'Verifique suas credenciais.'}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -87,9 +134,9 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
 
             <form onSubmit={handleSubmit} className="p-6 bg-slate-900/80 backdrop-blur-xl rounded-xl border border-slate-800 shadow-2xl shadow-black/40 space-y-4">
               <h2 className="text-lg font-semibold text-center">{isRegistering ? 'Criar conta' : 'Entrar na conta'}</h2>
-              {error && (
+              {(error || externalError) && (
                 <div className="text-sm text-red-400 bg-red-950/40 border border-red-900 rounded px-3 py-2">
-                  {error}
+                  {error || externalError}
                 </div>
               )}
               <div>
@@ -102,7 +149,27 @@ export default function Login({ onLogin, onSwitchMode }: { onLogin?: () => void;
                 <input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-slate-950 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent" required />
               </div>
-              <button type="submit" disabled={loading}
+              {isRegistering && (
+                <div>
+                  {allowFirstAdminSignup === null ? (
+                    <div className="rounded-lg border border-slate-700/30 bg-slate-900/70 p-3 text-xs text-slate-300 mb-3">
+                      Verificando disponibilidade do primeiro administrador... Aguarde alguns segundos antes de continuar.
+                    </div>
+                  ) : allowFirstAdminSignup ? (
+                    <div className="rounded-lg border border-emerald-700/30 bg-emerald-950/20 p-3 text-xs text-emerald-200 mb-3">
+                      Primeiro administrador disponível. Faça o cadastro inicial e seu usuário será promovido a administrador.
+                    </div>
+                  ) : (
+                    <>
+                      <label className="block text-xs text-slate-400 mb-1">Token de convite</label>
+                      <input type="password" placeholder="Token enviado pelo administrador" value={inviteToken} onChange={(e) => setInviteToken(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-slate-950 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent" required />
+                      <p className="text-[10px] text-slate-500 mt-1">Use o token que o administrador gerou para você. Ele valida seu cadastro no Firebase.</p>
+                    </>
+                  )}
+                </div>
+              )}
+              <button type="submit" disabled={loading || (isRegistering && allowFirstAdminSignup === null)}
                 className="w-full py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-red-950/30">
                 <LogIn size={14} /> {loading ? 'Aguarde...' : (isRegistering ? 'Cadastrar' : 'Entrar')}
               </button>

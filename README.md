@@ -14,3 +14,14 @@ Aplicação React + Firebase para registros de preventivas elétricas.
    `npm install`
 2. Rode o app:
    `npm run dev`
+
+## Convite de Acesso
+
+O modo Firebase agora exige um convite gerado por um administrador existente.
+
+- Somente usuários convidados podem se cadastrar no Firebase.
+- O administrador gera um token de convite dentro do app e o compartilha com o usuário.
+- O usuário usa esse token durante o cadastro para obter acesso.
+- O modo local continua disponível sem login.
+- Se ainda não houver um administrador registrado, o primeiro usuário cadastrado no Firebase será promovido automaticamente a administrador.
+- Apenas administradores podem gerar convites no app para novos usuários.
