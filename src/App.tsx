@@ -66,12 +66,18 @@ function formatDateBR(iso: string) {
 function buildReportHTML(record: any) {
   const tresFases = usesTresFases(record.tipo);
   const viaAB = isViaAB(record.tipo);
+  const viaSel = record.viaSelecionada || "ambas";
+  const showViaA = !viaAB || viaSel === "A" || viaSel === "ambas";
+  const showViaB = !viaAB || viaSel === "B" || viaSel === "ambas";
+
   const rows = record.circuitos
     .map(
       (c: any) => `
       <tr>
         <td>${String(c.n).padStart(2, "0")}</td>
-        ${viaAB ? `<td>${c.viaA || "-"}</td><td>${c.viaB || "-"}</td>` : `<td>${c.r || "-"}</td>`}
+        ${viaAB
+          ? `${showViaA ? `<td>${c.viaA || "-"}</td>` : ""}${showViaB ? `<td>${c.viaB || "-"}</td>` : ""}`
+          : `<td>${c.r || "-"}</td>`}
         ${tresFases ? `<td>${c.s || "-"}</td>` : ""}
         ${tresFases ? `<td>${c.t || "-"}</td>` : ""}
       </tr>`
@@ -82,9 +88,9 @@ function buildReportHTML(record: any) {
   const correnteRows = mc
     ? viaAB
       ? `
-        <tr><td>Corrente Total Via A</td><td>${mc.viaA || "-"} A</td></tr>
-        <tr><td>Corrente Total Via B</td><td>${mc.viaB || "-"} A</td></tr>
-        <tr><td>Corrente Total Via A + Via B</td><td>${mc.geral || "-"} A</td></tr>`
+        ${showViaA ? `<tr><td>Corrente Total Via A</td><td>${mc.viaA || "-"} A</td></tr>` : ""}
+        ${showViaB ? `<tr><td>Corrente Total Via B</td><td>${mc.viaB || "-"} A</td></tr>` : ""}
+        <tr><td>${viaSel !== "ambas" ? `Corrente Total Via ${viaSel}` : "Corrente Total Via A + Via B"}</td><td>${mc.geral || "-"} A</td></tr>`
       : `
         <tr><td>Corrente Total</td><td>${mc.total || "-"} A</td></tr>
         ${tresFases ? `<tr><td>Corrente Fase R</td><td>${mc.r || "-"} A</td></tr>` : `<tr><td>Corrente R</td><td>${mc.r || "-"} A</td></tr>`}
@@ -149,7 +155,9 @@ function buildReportHTML(record: any) {
     <thead>
       <tr>
         <th>Nº</th>
-        ${viaAB ? `<th>Via A (A)</th><th>Via B (A)</th>` : `<th>R (A)</th>`}
+        ${viaAB
+          ? `${showViaA ? `<th>Via A (A)</th>` : ""}${showViaB ? `<th>Via B (A)</th>` : ""}`
+          : `<th>R (A)</th>`}
         ${tresFases ? `<th>S (A)</th><th>T (A)</th>` : ""}
       </tr>
     </thead>
@@ -253,6 +261,7 @@ export default function App() {
   const [tipo, setTipo] = useState("PDT");
   const [tipoComplemento, setTipoComplemento] = useState("");
   const [tipoOutro, setTipoOutro] = useState("");
+  const [viaSelecionada, setViaSelecionada] = useState<"A" | "B" | "ambas">("ambas");
   const [ticket, setTicket] = useState("");
   const [temperatura, setTemperatura] = useState("");
   const [siteQuery, setSiteQuery] = useState("");
@@ -281,6 +290,7 @@ export default function App() {
   const [fData, setFData] = useState("");
   const [fSite, setFSite] = useState("");
   const [fTipo, setFTipo] = useState("");
+  const [fVia, setFVia] = useState<"" | "A" | "B" | "ambas">("");
   const [fSigla, setFSigla] = useState("");
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -383,6 +393,7 @@ export default function App() {
     setTensaoTR("");
     setTensaoAC("");
     setTensaoDC("");
+    if (!isViaAB(tipo)) setViaSelecionada("ambas");
   }, [tipo]);
 
   useEffect(() => {
@@ -393,9 +404,11 @@ export default function App() {
     const sumViaB = circuitos.reduce((acc, c: any) => acc + parseNumber(c.viaB || ""), 0);
 
     if (isViaAB(tipo)) {
-      setCorrenteViaA(sumViaA ? sumViaA.toFixed(1) : "");
-      setCorrenteViaB(sumViaB ? sumViaB.toFixed(1) : "");
-      const geral = sumViaA + sumViaB;
+      const showA = viaSelecionada === "A" || viaSelecionada === "ambas";
+      const showB = viaSelecionada === "B" || viaSelecionada === "ambas";
+      setCorrenteViaA(showA && sumViaA ? sumViaA.toFixed(1) : "");
+      setCorrenteViaB(showB && sumViaB ? sumViaB.toFixed(1) : "");
+      const geral = (showA ? sumViaA : 0) + (showB ? sumViaB : 0);
       setCorrenteGeral(geral ? geral.toFixed(1) : "");
       setCorrenteTotal("");
       setCorrenteR("");
@@ -419,7 +432,7 @@ export default function App() {
     setCorrenteViaA("");
     setCorrenteViaB("");
     setCorrenteGeral("");
-  }, [circuitos, tipo]);
+  }, [circuitos, tipo, viaSelecionada]);
 
   async function storeLocalRecords(next: any[]) {
     setRecords(next);
@@ -518,6 +531,7 @@ export default function App() {
     setTipo("PDT");
     setTipoComplemento("");
     setTipoOutro("");
+    setViaSelecionada("ambas");
     setTicket("");
     setTemperatura("");
     setSiteQuery("");
@@ -552,7 +566,11 @@ export default function App() {
 
     const finalTipo = tipo === "OUTRO" ? tipoOutro.trim().toUpperCase() : tipo;
     const medicaoCorrente = isViaAB(tipo)
-      ? { viaA: correnteViaA.trim(), viaB: correnteViaB.trim(), geral: correnteGeral.trim() }
+      ? {
+          viaA: (viaSelecionada === "A" || viaSelecionada === "ambas") ? correnteViaA.trim() : "",
+          viaB: (viaSelecionada === "B" || viaSelecionada === "ambas") ? correnteViaB.trim() : "",
+          geral: correnteGeral.trim(),
+        }
       : { total: correnteTotal.trim(), r: correnteR.trim(), s: correnteS.trim(), t: correnteT.trim() };
 
     const record = {
@@ -560,6 +578,7 @@ export default function App() {
       data,
       tipo: finalTipo,
       tipoComplemento: tipoComplemento.trim(),
+      viaSelecionada: isViaAB(tipo) ? viaSelecionada : undefined,
       ticket: ticket.trim(),
       temperatura: temperatura.trim(),
       site: siteSelected,
@@ -593,9 +612,10 @@ export default function App() {
       if (fTipo && r.tipo !== fTipo) return false;
       if (fSite && !r.site.name.toLowerCase().includes(fSite.toLowerCase())) return false;
       if (fSigla && !r.site.sigla.toLowerCase().includes(fSigla.toLowerCase())) return false;
+      if (fVia && isViaAB(r.tipo) && r.viaSelecionada && r.viaSelecionada !== fVia) return false;
       return true;
     });
-  }, [records, fData, fSite, fTipo, fSigla]);
+  }, [records, fData, fSite, fTipo, fSigla, fVia]);
 
   const stats = useMemo(() => {
     const uniqueSites = new Set(records.map((r) => r.site.sigla)).size;
@@ -848,9 +868,26 @@ export default function App() {
                 {tipo === "OUTRO" && (
                   <p className="text-xs text-slate-500 mt-2">Informe o tipo de quadro específico (ex: QDGE).</p>
                 )}
+                {isViaAB(tipo) && (
+                  <div className="mt-3">
+                    <label className="text-xs text-slate-400 block mb-1">Via(s) para preencher</label>
+                    <div className="flex gap-2">
+                      {(["ambas", "A", "B"] as const).map((v) => (
+                        <button key={v} type="button" onClick={() => setViaSelecionada(v)}
+                          className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                            viaSelecionada === v
+                              ? "bg-red-600 border-red-500 text-white"
+                              : "bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800"
+                          }`}>
+                          {v === "ambas" ? "Ambas" : `Via ${v}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <p className="text-xs text-slate-500 mt-1">
                   {isViaAB(tipo)
-                    ? "QDF/QDCC: use colunas Via A e Via B nos disjuntores."
+                    ? "QDF/QDCC: preencha Via A, Via B ou ambas conforme o quadro."
                     : usesTresFases(tipo)
                       ? "PDT/OUTRO: preenche Med. R, S e T. OUTRO inclui campo Nome."
                       : "Outros: preenche Med. R por circuito."}
@@ -934,15 +971,19 @@ export default function App() {
                     <div className="sm:col-span-full mt-1 mb-1 text-[11px] uppercase tracking-wider text-slate-500">
                       Correntes (soma automática dos disjuntores)
                     </div>
-                    <Field label="Corrente Total Via A (A)">
-                      <input type="number" step="0.1" value={correnteViaA} readOnly
-                        className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
-                    </Field>
-                    <Field label="Corrente Total Via B (A)">
-                      <input type="number" step="0.1" value={correnteViaB} readOnly
-                        className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
-                    </Field>
-                    <Field label="Corrente Total Via A + Via B (A)">
+                    {(viaSelecionada === "A" || viaSelecionada === "ambas") && (
+                      <Field label="Corrente Total Via A (A)">
+                        <input type="number" step="0.1" value={correnteViaA} readOnly
+                          className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
+                      </Field>
+                    )}
+                    {(viaSelecionada === "B" || viaSelecionada === "ambas") && (
+                      <Field label="Corrente Total Via B (A)">
+                        <input type="number" step="0.1" value={correnteViaB} readOnly
+                          className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
+                      </Field>
+                    )}
+                    <Field label={viaSelecionada === "ambas" ? "Corrente Total Via A + Via B (A)" : `Corrente Total Via ${viaSelecionada} (A)`}>
                       <input type="number" step="0.1" value={correnteGeral} readOnly
                         className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
                     </Field>
@@ -974,7 +1015,9 @@ export default function App() {
               </div>
               <p className="text-xs text-slate-500 mt-2">
                 {isViaAB(tipo)
-                  ? "QDF/QDCC: valores de Via A e Via B são somados automaticamente dos disjuntores." 
+                  ? viaSelecionada === "ambas"
+                    ? "QDF/QDCC: valores de Via A e Via B são somados automaticamente dos disjuntores."
+                    : `QDF/QDCC: apenas Via ${viaSelecionada} será considerada no cálculo.`
                   : usesTresFases(tipo)
                     ? "PDT/OUTRO: valores de R, S e T são somados automaticamente dos disjuntores."
                     : "Valores de R são somados automaticamente dos disjuntores."}
@@ -1025,12 +1068,20 @@ export default function App() {
                         {isViaAB(tipo) ? (
                           <>
                             <td className="px-4 py-1.5">
-                              <input type="number" step="0.1" value={c.viaA} onChange={(e) => updateCircuit(idx, "viaA", e.target.value)}
-                                className="w-24 bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-red-400 focus:outline-none focus:ring-1 focus:ring-red-600" />
+                              {viaSelecionada === "B" ? (
+                                <span className="w-24 inline-block text-center font-mono text-slate-600">-</span>
+                              ) : (
+                                <input type="number" step="0.1" value={c.viaA} onChange={(e) => updateCircuit(idx, "viaA", e.target.value)}
+                                  className="w-24 bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-red-400 focus:outline-none focus:ring-1 focus:ring-red-600" />
+                              )}
                             </td>
                             <td className="px-4 py-1.5">
-                              <input type="number" step="0.1" value={c.viaB} onChange={(e) => updateCircuit(idx, "viaB", e.target.value)}
-                                className="w-24 bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-red-400 focus:outline-none focus:ring-1 focus:ring-red-600" />
+                              {viaSelecionada === "A" ? (
+                                <span className="w-24 inline-block text-center font-mono text-slate-600">-</span>
+                              ) : (
+                                <input type="number" step="0.1" value={c.viaB} onChange={(e) => updateCircuit(idx, "viaB", e.target.value)}
+                                  className="w-24 bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-red-400 focus:outline-none focus:ring-1 focus:ring-red-600" />
+                              )}
                             </td>
                           </>
                         ) : (
@@ -1094,11 +1145,20 @@ export default function App() {
                   className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm" />
                 <input type="text" placeholder="Site/Hub" value={fSite} onChange={(e) => setFSite(e.target.value)}
                   className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm" />
-                <select value={fTipo} onChange={(e) => setFTipo(e.target.value)}
+                <select value={fTipo} onChange={(e) => { setFTipo(e.target.value); setFVia(""); }}
                   className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm">
                   <option value="">Todos os tipos</option>
                   {Array.from(new Set(records.map(r => r.tipo))).map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
+                {isViaAB(fTipo) && (
+                  <select value={fVia} onChange={(e) => setFVia(e.target.value as "" | "A" | "B" | "ambas")}
+                    className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm">
+                    <option value="">Todas as vias</option>
+                    <option value="A">Via A</option>
+                    <option value="B">Via B</option>
+                    <option value="ambas">Ambas</option>
+                  </select>
+                )}
                 <input type="text" placeholder="Sigla" value={fSigla} onChange={(e) => setFSigla(e.target.value)}
                   className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm" />
               </div>
@@ -1355,11 +1415,21 @@ export default function App() {
                         <>
                           <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">
                             Correntes (soma automática dos disjuntores)
+                            {viewRecord.viaSelecionada && viewRecord.viaSelecionada !== "ambas" && (
+                              <span className="ml-2 text-slate-400">— Via {viewRecord.viaSelecionada}</span>
+                            )}
                           </div>
                           <div className="grid grid-cols-3 gap-3 text-sm">
-                            <Info label="Via A" value={`${viewRecord.medicaoCorrente.viaA || "-"} A`} />
-                            <Info label="Via B" value={`${viewRecord.medicaoCorrente.viaB || "-"} A`} />
-                            <Info label="Via A + Via B" value={`${viewRecord.medicaoCorrente.geral || "-"} A`} />
+                            {(viewRecord.viaSelecionada === "A" || viewRecord.viaSelecionada === "ambas" || !viewRecord.viaSelecionada) && (
+                              <Info label="Via A" value={`${viewRecord.medicaoCorrente.viaA || "-"} A`} />
+                            )}
+                            {(viewRecord.viaSelecionada === "B" || viewRecord.viaSelecionada === "ambas" || !viewRecord.viaSelecionada) && (
+                              <Info label="Via B" value={`${viewRecord.medicaoCorrente.viaB || "-"} A`} />
+                            )}
+                            <Info
+                              label={viewRecord.viaSelecionada && viewRecord.viaSelecionada !== "ambas" ? `Total Via ${viewRecord.viaSelecionada}` : "Via A + Via B"}
+                              value={`${viewRecord.medicaoCorrente.geral || "-"} A`}
+                            />
                           </div>
                         </>
                       )}
@@ -1415,8 +1485,12 @@ export default function App() {
                       <th className="text-left px-2 py-1">Nº</th>
                       {isViaAB(viewRecord.tipo) ? (
                         <>
-                          <th className="text-left px-2 py-1">Via A (A)</th>
-                          <th className="text-left px-2 py-1">Via B (A)</th>
+                          {(viewRecord.viaSelecionada === "A" || viewRecord.viaSelecionada === "ambas" || !viewRecord.viaSelecionada) && (
+                            <th className="text-left px-2 py-1">Via A (A)</th>
+                          )}
+                          {(viewRecord.viaSelecionada === "B" || viewRecord.viaSelecionada === "ambas" || !viewRecord.viaSelecionada) && (
+                            <th className="text-left px-2 py-1">Via B (A)</th>
+                          )}
                         </>
                       ) : (
                         <>
@@ -1433,8 +1507,12 @@ export default function App() {
                         <td className="px-2 py-1 font-mono text-slate-500">{String(c.n).padStart(2, "0")}</td>
                         {isViaAB(viewRecord.tipo) ? (
                           <>
-                            <td className="px-2 py-1 font-mono text-red-400">{c.viaA || "-"}</td>
-                            <td className="px-2 py-1 font-mono text-red-400">{c.viaB || "-"}</td>
+                            {(viewRecord.viaSelecionada === "A" || viewRecord.viaSelecionada === "ambas" || !viewRecord.viaSelecionada) && (
+                              <td className="px-2 py-1 font-mono text-red-400">{c.viaA || "-"}</td>
+                            )}
+                            {(viewRecord.viaSelecionada === "B" || viewRecord.viaSelecionada === "ambas" || !viewRecord.viaSelecionada) && (
+                              <td className="px-2 py-1 font-mono text-red-400">{c.viaB || "-"}</td>
+                            )}
                           </>
                         ) : (
                           <>
