@@ -28,7 +28,7 @@ const SITES = [
 ];
 
 const PANEL_TYPES = ["PDT", "QDF", "QDCC", "OUTRO"];
-const usesTresFases = (tipo: string) => tipo === "PDT";
+const usesTresFases = (tipo: string) => tipo === "PDT" || tipo === "OUTRO";
 const isViaAB = (tipo: string) => tipo === "QDF" || tipo === "QDCC";
 const defaultCircuitCount = (tipo: string) => (tipo === "PDT" ? 8 : 13);
 
@@ -39,6 +39,10 @@ function uid() {
 function createCircuit(n: number, tipo: string) {
   if (isViaAB(tipo)) {
     return { n, viaA: "", viaB: "" };
+  }
+
+  if (tipo === "OUTRO") {
+    return { n, nome: "", r: "", s: "", t: "" };
   }
 
   if (usesTresFases(tipo)) {
@@ -485,8 +489,10 @@ export default function App() {
     }
   }
 
+  const maxCircuitos = isViaAB(tipo) ? 200 : 60;
+
   function handleQtdChange(val: string) {
-    const n = Math.max(1, Math.min(60, Number(val) || 1));
+    const n = Math.max(1, Math.min(maxCircuitos, Number(val) || 1));
     setQtdCircuitos(n);
     setCircuitos((prev) => {
       if (n > prev.length) {
@@ -846,7 +852,7 @@ export default function App() {
                   {isViaAB(tipo)
                     ? "QDF/QDCC: use colunas Via A e Via B nos disjuntores."
                     : usesTresFases(tipo)
-                      ? "PDT: preenche Med. R, S e T."
+                      ? "PDT/OUTRO: preenche Med. R, S e T. OUTRO inclui campo Nome."
                       : "Outros: preenche Med. R por circuito."}
                 </p>
               </Field>
@@ -969,7 +975,9 @@ export default function App() {
               <p className="text-xs text-slate-500 mt-2">
                 {isViaAB(tipo)
                   ? "QDF/QDCC: valores de Via A e Via B são somados automaticamente dos disjuntores." 
-                  : "PDT: valores de R, S e T são somados automaticamente dos disjuntores."}
+                  : usesTresFases(tipo)
+                    ? "PDT/OUTRO: valores de R, S e T são somados automaticamente dos disjuntores."
+                    : "Valores de R são somados automaticamente dos disjuntores."}
               </p>
             </div>
 
@@ -978,7 +986,7 @@ export default function App() {
                 <span className="text-sm font-medium">Disjuntores de Distribuição</span>
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-slate-400">Circuitos:</span>
-                  <input type="number" min={1} max={60} value={qtdCircuitos}
+                  <input type="number" min={1} max={maxCircuitos} value={qtdCircuitos}
                     onChange={(e) => handleQtdChange(e.target.value)}
                     className="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-center font-mono" />
                 </div>
@@ -988,6 +996,7 @@ export default function App() {
                   <thead className="sticky top-0 bg-slate-900 text-slate-400 text-xs uppercase">
                     <tr>
                       <th className="text-left px-4 py-2 w-20">Nº</th>
+                      {tipo === "OUTRO" && <th className="text-left px-4 py-2">Nome do Disjuntor</th>}
                       {isViaAB(tipo) ? (
                         <>
                           <th className="text-left px-4 py-2">Via A (A)</th>
@@ -1006,6 +1015,13 @@ export default function App() {
                     {circuitos.map((c, idx) => (
                       <tr key={c.n} className={idx % 2 ? "bg-slate-900/40" : ""}>
                         <td className="px-4 py-1.5 font-mono text-slate-400">{String(c.n).padStart(2, "0")}</td>
+                        {tipo === "OUTRO" && (
+                          <td className="px-4 py-1.5">
+                            <input type="text" value={c.nome || ""} onChange={(e) => updateCircuit(idx, "nome", e.target.value)}
+                              placeholder="Nome"
+                              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 font-mono text-slate-200 focus:outline-none focus:ring-1 focus:ring-red-600" />
+                          </td>
+                        )}
                         {isViaAB(tipo) ? (
                           <>
                             <td className="px-4 py-1.5">
@@ -1110,7 +1126,7 @@ export default function App() {
                         <td className="px-3 py-2 font-mono">{formatDateBR(r.data)}</td>
                         <td className="px-3 py-2">{r.site.name}</td>
                         <td className="px-3 py-2 font-mono text-slate-400">{r.site.sigla}</td>
-                        <td className="px-3 py-2"><span className="px-1.5 py-0.5 rounded bg-slate-800 text-xs font-mono">{r.tipo}</span></td>
+                        <td className="px-3 py-2"><span className="px-1.5 py-0.5 rounded bg-slate-800 text-xs font-mono">{r.tipo}{r.tipoComplemento ? ` ${r.tipoComplemento}` : ""}</span></td>
                         <td className="px-3 py-2 font-mono text-slate-400">{r.ticket}</td>
                         <td className="px-3 py-2 font-mono text-red-400">{r.temperatura}°C</td>
                         <td className="px-3 py-2 text-right whitespace-nowrap">

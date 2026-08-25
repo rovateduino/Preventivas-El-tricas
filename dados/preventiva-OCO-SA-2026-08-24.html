@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Preventiva OCO-SA - 24/08/2026</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; color: #111; padding: 32px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  h2 { font-size: 14px; margin: 0 0 8px; }
+  .subtitle { color: #555; margin-bottom: 20px; font-size: 14px; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+  td, th { border: 1px solid #ccc; padding: 6px 10px; font-size: 13px; text-align: left; }
+  th { background: #f2f2f2; }
+  .meta td:first-child { font-weight: bold; width: 160px; border: none; padding: 3px 10px 3px 0; }
+  .meta td:last-child { border: none; padding: 3px 0; }
+  .meta table, .meta { border: none; }
+  .corrente td:first-child { font-weight: bold; width: 220px; }
+  @media print {
+    body { padding: 0; }
+  }
+</style>
+</head>
+<body>
+  <h1>Relatório de Preventiva Elétrica</h1>
+  <div class="subtitle">EBT Osasco (OCO-SA) — Quadro QDF 01</div>
+  <table class="meta">
+    <tbody>
+      <tr><td>Data</td><td>24/08/2026</td></tr>
+      <tr><td>Nº Ticket</td><td>123456</td></tr>
+      <tr><td>Temperatura</td><td>25°C</td></tr>
+      <tr><td>Categoria do Site</td><td>MUX EBT</td></tr>
+      <tr><td>Complemento do Quadro</td><td>01</td></tr>
+      
+      <tr><td>TENSÃO DC</td><td>54 V</td></tr>
+      <tr><td>Corrente Geral DC</td><td>100 V</td></tr>
+    </tbody>
+  </table>
+  <table class="corrente">
+    <tbody>
+      
+        <tr><td>Corrente Total Via A</td><td>25.0 A</td></tr>
+        <tr><td>Corrente Total Via B</td><td>43.0 A</td></tr>
+        <tr><td>Corrente Total Via A + Via B</td><td>68.0 A</td></tr>
+    </tbody>
+  </table>
+  <table>
+    <thead>
+      <tr>
+        <th>Nº</th>
+        <th>Via A (A)</th><th>Via B (A)</th>
+        
+      </tr>
+    </thead>
+    <tbody>
+      
+      <tr>
+        <td>01</td>
+        <td>10</td><td>18</td>
+        
+        
+      </tr>
+      <tr>
+        <td>02</td>
+        <td>15</td><td>25</td>
+        
+        
+      </tr>
+    </tbody>
+  </table>
+  <script>window.onload = function() { setTimeout(function(){ window.print(); }, 300); };</script>
+</body>
+</html>

@@ -26,6 +26,7 @@ export interface Preventiva {
   uid: string; // Firebase Auth UID for ownership
   data: string; // YYYY-MM-DD
   tipoQuadro: 'PDT' | 'QDF' | 'QDCC' | 'QDGE' | string;
+  tipoComplemento?: string;
   ticket: string;
   temperatura: number;
   site: Site;
