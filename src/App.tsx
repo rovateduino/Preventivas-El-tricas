@@ -90,7 +90,7 @@ function buildReportHTML(record: any) {
       ? `
         ${showViaA ? `<tr><td>Corrente Total Via A</td><td>${mc.viaA || "-"} A</td></tr>` : ""}
         ${showViaB ? `<tr><td>Corrente Total Via B</td><td>${mc.viaB || "-"} A</td></tr>` : ""}
-        <tr><td>${viaSel !== "ambas" ? `Corrente Total Via ${viaSel}` : "Corrente Total Via A + Via B"}</td><td>${mc.geral || "-"} A</td></tr>`
+        ${viaSel === "ambas" ? `<tr><td>Corrente Total Via A + Via B</td><td>${mc.geral || "-"} A</td></tr>` : ""}`
       : `
         <tr><td>Corrente Total</td><td>${mc.total || "-"} A</td></tr>
         ${tresFases ? `<tr><td>Corrente Fase R</td><td>${mc.r || "-"} A</td></tr>` : `<tr><td>Corrente R</td><td>${mc.r || "-"} A</td></tr>`}
@@ -983,10 +983,12 @@ export default function App() {
                           className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
                       </Field>
                     )}
-                    <Field label={viaSelecionada === "ambas" ? "Corrente Total Via A + Via B (A)" : `Corrente Total Via ${viaSelecionada} (A)`}>
-                      <input type="number" step="0.1" value={correnteGeral} readOnly
-                        className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
-                    </Field>
+                    {viaSelecionada === "ambas" && (
+                      <Field label="Corrente Total Via A + Via B (A)">
+                        <input type="number" step="0.1" value={correnteGeral} readOnly
+                          className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
+                      </Field>
+                    )}
                   </>
                 ) : usesTresFases(tipo) ? (
                   <>
@@ -1426,10 +1428,9 @@ export default function App() {
                             {(viewRecord.viaSelecionada === "B" || viewRecord.viaSelecionada === "ambas" || !viewRecord.viaSelecionada) && (
                               <Info label="Via B" value={`${viewRecord.medicaoCorrente.viaB || "-"} A`} />
                             )}
-                            <Info
-                              label={viewRecord.viaSelecionada && viewRecord.viaSelecionada !== "ambas" ? `Total Via ${viewRecord.viaSelecionada}` : "Via A + Via B"}
-                              value={`${viewRecord.medicaoCorrente.geral || "-"} A`}
-                            />
+                            {(viewRecord.viaSelecionada === "ambas" || !viewRecord.viaSelecionada) && (
+                              <Info label="Via A + Via B" value={`${viewRecord.medicaoCorrente.geral || "-"} A`} />
+                            )}
                           </div>
                         </>
                       )}
