@@ -27,6 +27,19 @@ export const savePreventiva = async (preventiva: Omit<Preventiva, 'id' | 'criado
   return ref.id;
 };
 
+export const updatePreventiva = async (id: string, preventiva: Record<string, unknown> & { uid: string }) => {
+  const payload = { ...preventiva };
+  delete payload.id;
+  await setDoc(
+    doc(db, COLLECTION, id),
+    {
+      ...payload,
+      atualizadoEm: Date.now(),
+    },
+    { merge: true },
+  );
+};
+
 export const importPreventivas = async (records: any[], uid: string) => {
   const batch = writeBatch(db);
   const normalized = records.map((record) => normalizePreventivaRecord(record, uid));

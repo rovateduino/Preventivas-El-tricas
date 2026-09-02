@@ -32,6 +32,7 @@ export interface Preventiva {
   site: Site;
   circuitos: Circuito[];
   medicaoCorrente: MedicaoCorrente;
+  observacao?: string;
   criadoEm: number; // Timestamp
   atualizadoEm: number; // Timestamp
 }

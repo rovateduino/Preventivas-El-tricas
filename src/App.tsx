@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Zap, Thermometer, Ticket, Search, Plus, Trash2, FileDown, X, Filter, Calendar, ChevronDown, Save, AlertTriangle, LogOut, Download, Upload } from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Zap, Thermometer, Ticket, Search, Plus, Trash2, FileDown, X, Filter, Calendar, ChevronDown, Save, AlertTriangle, LogOut, Download, Upload, Pencil } from "lucide-react";
 import { subscribeToAuthChanges, logout } from './lib/auth';
-import { getPreventivas, savePreventiva, deletePreventiva, importPreventivas, deleteAllPreventivas } from './lib/preventivaService';
+import { getPreventivas, savePreventiva, updatePreventiva, deletePreventiva, importPreventivas, deleteAllPreventivas } from './lib/preventivaService';
 import { exportToJSON, importFromJSON } from './lib/dataExport';
 import { User } from 'firebase/auth';
 import Login from './components/Login';
@@ -63,6 +63,20 @@ function formatDateBR(iso: string) {
   return `${d}/${m}/${y}`;
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function getCorrenteGeralDC(record: { medicaoCorrente?: { geral?: string | number }; tensaoDC?: string }) {
+  const geral = record.medicaoCorrente?.geral;
+  if (geral !== undefined && geral !== null && String(geral).trim() !== "") return String(geral);
+  return record.tensaoDC || "";
+}
+
 function buildReportHTML(record: any) {
   const tresFases = usesTresFases(record.tipo);
   const viaAB = isViaAB(record.tipo);
@@ -87,21 +101,19 @@ function buildReportHTML(record: any) {
   const mc = record.medicaoCorrente;
   const correnteRows = mc
     ? viaAB
-      ? `
-        ${showViaA ? `<tr><td>Corrente Total Via A</td><td>${mc.viaA || "-"} A</td></tr>` : ""}
-        ${showViaB ? `<tr><td>Corrente Total Via B</td><td>${mc.viaB || "-"} A</td></tr>` : ""}
-        ${viaSel === "ambas" ? `<tr><td>Corrente Total Via A + Via B</td><td>${mc.geral || "-"} A</td></tr>` : ""}`
+      ? `<tr><td>Corrente Geral DC</td><td>${getCorrenteGeralDC(record) || "-"} A</td></tr>`
       : `
         <tr><td>Corrente Total</td><td>${mc.total || "-"} A</td></tr>
         ${tresFases ? `<tr><td>Corrente Fase R</td><td>${mc.r || "-"} A</td></tr>` : `<tr><td>Corrente R</td><td>${mc.r || "-"} A</td></tr>`}
         ${tresFases ? `<tr><td>Corrente Fase S</td><td>${mc.s || "-"} A</td></tr>` : ""}
         ${tresFases ? `<tr><td>Corrente Fase T</td><td>${mc.t || "-"} A</td></tr>` : ""}`
-    : "";
+    : viaAB
+      ? `<tr><td>Corrente Geral DC</td><td>${getCorrenteGeralDC(record) || "-"} A</td></tr>`
+      : "";
 
   const tensaoRows = viaAB
     ? `
-      <tr><td>TENSÃO DC</td><td>${record.tensaoAC || "-"} V</td></tr>
-      <tr><td>Corrente Geral DC</td><td>${record.tensaoDC || "-"} V</td></tr>`
+      <tr><td>TENSÃO DC</td><td>${record.tensaoAC || "-"} V</td></tr>`
     : `
       <tr><td>Tensão Fase R</td><td>${record.tensaoR || "-"} V</td></tr>
       <tr><td>Tensão Fase S</td><td>${record.tensaoS || "-"} V</td></tr>
@@ -142,8 +154,9 @@ function buildReportHTML(record: any) {
       <tr><td>Nº Ticket</td><td>${record.ticket}</td></tr>
       <tr><td>Temperatura</td><td>${record.temperatura}°C</td></tr>
       <tr><td>Categoria do Site</td><td>${record.site.cat || record.site.categoria || "-"}</td></tr>
-      ${record.tipoComplemento ? `<tr><td>Complemento do Quadro</td><td>${record.tipoComplemento}</td></tr>` : ""}
+      ${record.tipoComplemento ? `<tr><td>Complemento do Quadro</td><td>${escapeHtml(String(record.tipoComplemento))}</td></tr>` : ""}
       ${tensaoRows}
+      ${record.observacao ? `<tr><td>Observação</td><td style="white-space:pre-wrap">${escapeHtml(String(record.observacao))}</td></tr>` : ""}
     </tbody>
   </table>
   <table class="corrente">
@@ -285,6 +298,10 @@ export default function App() {
   const [tensaoTR, setTensaoTR] = useState("");
   const [tensaoAC, setTensaoAC] = useState("");
   const [tensaoDC, setTensaoDC] = useState("");
+  const [observacao, setObservacao] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingCriadoEm, setEditingCriadoEm] = useState<string | number | null>(null);
+  const hydratingEdit = useRef(false);
   const [formError, setFormError] = useState("");
 
   const [fData, setFData] = useState("");
@@ -376,6 +393,7 @@ export default function App() {
   }, [saveMode, user]);
 
   useEffect(() => {
+    if (hydratingEdit.current) return;
     setQtdCircuitos(defaultCircuitCount(tipo));
     setCircuitos(Array.from({ length: defaultCircuitCount(tipo) }, (_, i) => createCircuit(i + 1, tipo)));
     setCorrenteTotal("");
@@ -447,30 +465,37 @@ export default function App() {
     }
   }
 
-  async function persist(record: any, next: any[]) {
+  async function persist(record: any, next: any[], isUpdate = false) {
     setSaveState("saving");
     if (saveMode === "local") {
       await storeLocalRecords(next);
-      showToast("Registro salvo localmente ✓");
-      return;
+      showToast(isUpdate ? "Registro atualizado localmente ✓" : "Registro salvo localmente ✓");
+      return true;
     }
 
     if (!user) {
       setFormError("Login necessário para salvar no Firebase.");
       setSaveState("idle");
-      return;
+      return false;
     }
 
     try {
-      await savePreventiva({ ...record, uid: user.uid });
-      setRecords(next);
+      if (isUpdate) {
+        await updatePreventiva(record.id, { ...record, uid: user.uid });
+        setRecords(next);
+      } else {
+        const newId = await savePreventiva({ ...record, uid: user.uid });
+        setRecords([{ ...record, id: newId }, ...records]);
+      }
       setSaveState("saved");
-      showToast("Registro salvo no Firebase ✓");
+      showToast(isUpdate ? "Registro atualizado no Firebase ✓" : "Registro salvo no Firebase ✓");
       setTimeout(() => setSaveState("idle"), 1200);
+      return true;
     } catch (e) {
       console.error("Erro ao salvar no Firebase:", e);
       setFormError("Falha ao salvar no Firebase. Verifique sua conexão.");
       setSaveState("idle");
+      return false;
     }
   }
 
@@ -553,7 +578,60 @@ export default function App() {
     setTensaoTR("");
     setTensaoAC("");
     setTensaoDC("");
+    setObservacao("");
+    setEditingId(null);
+    setEditingCriadoEm(null);
     setFormError("");
+  }
+
+  function startEdit(record: any) {
+    hydratingEdit.current = true;
+    const knownTipo = PANEL_TYPES.includes(record.tipo) && record.tipo !== "OUTRO";
+    setData(record.data || "");
+    if (knownTipo) {
+      setTipo(record.tipo);
+      setTipoOutro("");
+    } else {
+      setTipo("OUTRO");
+      setTipoOutro(record.tipo || "");
+    }
+    setTipoComplemento(record.tipoComplemento || "");
+    setViaSelecionada(record.viaSelecionada || "ambas");
+    setTicket(record.ticket || "");
+    setTemperatura(String(record.temperatura ?? ""));
+    setSiteSelected(record.site || null);
+    setSiteQuery("");
+    setSiteOpen(false);
+    const loadedCircuitos = Array.isArray(record.circuitos) && record.circuitos.length > 0
+      ? record.circuitos
+      : Array.from({ length: defaultCircuitCount(knownTipo ? record.tipo : "OUTRO") }, (_, i) => createCircuit(i + 1, knownTipo ? record.tipo : "OUTRO"));
+    setQtdCircuitos(loadedCircuitos.length);
+    setCircuitos(loadedCircuitos);
+    const mc = record.medicaoCorrente || {};
+    setCorrenteTotal(mc.total != null ? String(mc.total) : "");
+    setCorrenteR(mc.r != null ? String(mc.r) : "");
+    setCorrenteS(mc.s != null ? String(mc.s) : "");
+    setCorrenteT(mc.t != null ? String(mc.t) : "");
+    setCorrenteViaA(mc.viaA != null ? String(mc.viaA) : "");
+    setCorrenteViaB(mc.viaB != null ? String(mc.viaB) : "");
+    setCorrenteGeral(getCorrenteGeralDC(record));
+    setTensaoR(record.tensaoR || "");
+    setTensaoS(record.tensaoS || "");
+    setTensaoT(record.tensaoT || "");
+    setTensaoRS(record.tensaoRS || "");
+    setTensaoST(record.tensaoST || "");
+    setTensaoTR(record.tensaoTR || "");
+    setTensaoAC(record.tensaoAC || "");
+    setTensaoDC(record.tensaoDC || "");
+    setObservacao(record.observacao || "");
+    setEditingId(record.id);
+    setEditingCriadoEm(record.criadoEm ?? null);
+    setFormError("");
+    setViewRecord(null);
+    setTab("novo");
+    window.setTimeout(() => {
+      hydratingEdit.current = false;
+    }, 0);
   }
 
   async function handleSave() {
@@ -573,8 +651,9 @@ export default function App() {
         }
       : { total: correnteTotal.trim(), r: correnteR.trim(), s: correnteS.trim(), t: correnteT.trim() };
 
+    const isEdit = Boolean(editingId);
     const record = {
-      id: uid(),
+      id: isEdit ? editingId : uid(),
       data,
       tipo: finalTipo,
       tipoComplemento: tipoComplemento.trim(),
@@ -591,11 +670,18 @@ export default function App() {
       tensaoST: tensaoST.trim(),
       tensaoTR: tensaoTR.trim(),
       tensaoAC: tensaoAC.trim(),
-      tensaoDC: tensaoDC.trim(),
-      criadoEm: new Date().toISOString(),
+      tensaoDC: isViaAB(tipo) ? correnteGeral.trim() : tensaoDC.trim(),
+      observacao: observacao.trim(),
+      criadoEm: isEdit ? (editingCriadoEm ?? new Date().toISOString()) : new Date().toISOString(),
+      atualizadoEm: new Date().toISOString(),
     };
 
-    await persist(record, [record, ...records]);
+    const next = isEdit
+      ? records.map((r) => (r.id === editingId ? record : r))
+      : [record, ...records];
+
+    const saved = await persist(record, next, isEdit);
+    if (!saved) return;
     resetForm();
     setTab("registros");
   }
@@ -776,7 +862,9 @@ export default function App() {
           </div>
         </div>
         <div className="max-w-5xl mx-auto px-5 flex gap-1 border-t border-slate-800">
-          <TabButton active={tab === "novo"} onClick={() => setTab("novo")}>Novo Registro</TabButton>
+          <TabButton active={tab === "novo"} onClick={() => setTab("novo")}>
+            {editingId ? "Editar Registro" : "Novo Registro"}
+          </TabButton>
           <TabButton active={tab === "registros"} onClick={() => setTab("registros")}>
             Registros Salvos {records.length > 0 && <span className="text-slate-500">({records.length})</span>}
           </TabButton>
@@ -838,6 +926,14 @@ export default function App() {
             {inviteError && (
               <div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-xs text-red-200 mt-3">
                 {inviteError}
+              </div>
+            )}
+            {editingId && (
+              <div className="flex items-center justify-between gap-3 text-sm bg-amber-950/40 border border-amber-900 rounded px-3 py-2 text-amber-200">
+                <span>Editando registro existente. Ao salvar, os dados atuais serão substituídos.</span>
+                <button type="button" onClick={resetForm} className="text-xs underline text-amber-100 hover:text-white shrink-0">
+                  Cancelar edição
+                </button>
               </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -926,12 +1022,8 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 {isViaAB(tipo) ? (
                   <>
-                    <Field label="TENSÃO DC">
+                    <Field label="TENSÃO DC (V)">
                       <input type="text" value={tensaoAC} onChange={(e) => setTensaoAC(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
-                    </Field>
-                    <Field label="Corrente Geral DC">
-                      <input type="text" value={tensaoDC} onChange={(e) => setTensaoDC(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-600" />
                     </Field>
                   </>
@@ -971,24 +1063,11 @@ export default function App() {
                     <div className="sm:col-span-full mt-1 mb-1 text-[11px] uppercase tracking-wider text-slate-500">
                       Correntes (soma automática dos disjuntores)
                     </div>
-                    {(viaSelecionada === "A" || viaSelecionada === "ambas") && (
-                      <Field label="Corrente Total Via A (A)">
-                        <input type="number" step="0.1" value={correnteViaA} readOnly
-                          className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
-                      </Field>
-                    )}
-                    {(viaSelecionada === "B" || viaSelecionada === "ambas") && (
-                      <Field label="Corrente Total Via B (A)">
-                        <input type="number" step="0.1" value={correnteViaB} readOnly
-                          className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
-                      </Field>
-                    )}
-                    {viaSelecionada === "ambas" && (
-                      <Field label="Corrente Total Via A + Via B (A)">
-                        <input type="number" step="0.1" value={correnteGeral} readOnly
-                          className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
-                      </Field>
-                    )}
+                    <Field label="Corrente Geral DC (A)">
+                      <input type="number" step="0.1" value={correnteGeral} readOnly
+                        aria-label="Corrente geral DC em amperes"
+                        className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-red-400" />
+                    </Field>
                   </>
                 ) : usesTresFases(tipo) ? (
                   <>
@@ -1018,8 +1097,8 @@ export default function App() {
               <p className="text-xs text-slate-500 mt-2">
                 {isViaAB(tipo)
                   ? viaSelecionada === "ambas"
-                    ? "QDF/QDCC: valores de Via A e Via B são somados automaticamente dos disjuntores."
-                    : `QDF/QDCC: apenas Via ${viaSelecionada} será considerada no cálculo.`
+                    ? "QDF/QDCC: a corrente geral DC é a soma automática dos disjuntores das vias A e B."
+                    : `QDF/QDCC: a corrente geral DC considera apenas a Via ${viaSelecionada}.`
                   : usesTresFases(tipo)
                     ? "PDT/OUTRO: valores de R, S e T são somados automaticamente dos disjuntores."
                     : "Valores de R são somados automaticamente dos disjuntores."}
@@ -1113,6 +1192,18 @@ export default function App() {
               </div>
             </div>
 
+            <Field label="Observação">
+              <textarea
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder="Anotações da preventiva (opcional)"
+                aria-label="Observação da preventiva"
+                className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-600 resize-y min-h-[80px]"
+              />
+            </Field>
+
             {formError && (
               <div className="flex items-center gap-2 text-sm text-amber-400 bg-amber-950/40 border border-amber-900 rounded px-3 py-2">
                 <AlertTriangle size={14} /> {formError}
@@ -1130,7 +1221,7 @@ export default function App() {
               </button>
               <button onClick={handleSave}
                 className="px-4 py-2 text-sm rounded bg-red-600 hover:bg-red-500 text-white flex items-center gap-2 font-medium">
-                <Save size={14} /> Salvar registro
+                <Save size={14} /> {editingId ? "Salvar alterações" : "Salvar registro"}
               </button>
             </div>
           </div>
@@ -1192,7 +1283,15 @@ export default function App() {
                         <td className="px-3 py-2 font-mono text-slate-400">{r.ticket}</td>
                         <td className="px-3 py-2 font-mono text-red-400">{r.temperatura}°C</td>
                         <td className="px-3 py-2 text-right whitespace-nowrap">
-                          <button onClick={() => setViewRecord(r)} className="text-xs text-slate-300 hover:text-white underline mr-3">Ver</button>
+                          <button type="button" onClick={() => setViewRecord(r)} className="text-xs text-slate-300 hover:text-white underline mr-3">Ver</button>
+                          <button
+                            type="button"
+                            onClick={() => startEdit(r)}
+                            className="text-xs text-slate-300 hover:text-white mr-3 inline-flex items-center gap-1"
+                            aria-label={`Editar preventiva de ${r.site.name}`}
+                          >
+                            <Pencil size={13} /> Editar
+                          </button>
                           {deleteTarget === r.id ? (
                             <span className="text-xs">
                               <button onClick={() => confirmDelete(r.id)} className="text-red-400 hover:text-red-300 mr-2">Confirmar</button>
@@ -1403,37 +1502,30 @@ export default function App() {
                   <Info label="Ticket" value={viewRecord.ticket} />
                   <Info label="Temperatura" value={`${viewRecord.temperatura}°C`} />
                 </div>
+                {viewRecord.observacao && (
+                  <div className="border border-slate-800 rounded p-3 text-sm">
+                    <div className="text-xs text-slate-500 mb-1">Observação</div>
+                    <p className="text-slate-200 whitespace-pre-wrap">{viewRecord.observacao}</p>
+                  </div>
+                )}
 
                 <div className="border border-slate-800 rounded p-3">
                   <div className="text-xs text-slate-400 uppercase mb-3">Medição Elétrica do Quadro</div>
                   {isViaAB(viewRecord.tipo) ? (
                     <>
-                      <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">Tensões</div>
+                      <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">Tensão</div>
                       <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                         <Info label="TENSÃO DC" value={`${viewRecord.tensaoAC || "-"} V`} />
-                        <Info label="Corrente Geral DC" value={`${viewRecord.tensaoDC || "-"} V`} />
                       </div>
-                      {viewRecord.medicaoCorrente && "viaA" in viewRecord.medicaoCorrente && (
-                        <>
-                          <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">
-                            Correntes (soma automática dos disjuntores)
-                            {viewRecord.viaSelecionada && viewRecord.viaSelecionada !== "ambas" && (
-                              <span className="ml-2 text-slate-400">— Via {viewRecord.viaSelecionada}</span>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-3 gap-3 text-sm">
-                            {(viewRecord.viaSelecionada === "A" || viewRecord.viaSelecionada === "ambas" || !viewRecord.viaSelecionada) && (
-                              <Info label="Via A" value={`${viewRecord.medicaoCorrente.viaA || "-"} A`} />
-                            )}
-                            {(viewRecord.viaSelecionada === "B" || viewRecord.viaSelecionada === "ambas" || !viewRecord.viaSelecionada) && (
-                              <Info label="Via B" value={`${viewRecord.medicaoCorrente.viaB || "-"} A`} />
-                            )}
-                            {(viewRecord.viaSelecionada === "ambas" || !viewRecord.viaSelecionada) && (
-                              <Info label="Via A + Via B" value={`${viewRecord.medicaoCorrente.geral || "-"} A`} />
-                            )}
-                          </div>
-                        </>
-                      )}
+                      <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-2">
+                        Correntes (soma automática dos disjuntores)
+                        {viewRecord.viaSelecionada && viewRecord.viaSelecionada !== "ambas" && (
+                          <span className="ml-2 text-slate-400">— Via {viewRecord.viaSelecionada}</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 text-sm">
+                        <Info label="Corrente Geral DC" value={`${getCorrenteGeralDC(viewRecord) || "-"} A`} />
+                      </div>
                     </>
                   ) : (
                     <>
@@ -1529,10 +1621,20 @@ export default function App() {
               </div>
               <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between gap-3">
                 <p className="text-xs text-slate-500">Baixa um arquivo .html — abra-o no navegador e use "Salvar como PDF" na impressão.</p>
-                <button onClick={() => downloadReport(viewRecord)}
-                  className="px-4 py-2 text-sm rounded bg-red-600 hover:bg-red-500 text-white flex items-center gap-2 shrink-0">
-                  <FileDown size={14} /> Exportar relatório
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(viewRecord)}
+                    className="px-4 py-2 text-sm rounded border border-slate-600 text-slate-200 hover:bg-slate-800 flex items-center gap-2"
+                    aria-label="Editar este registro"
+                  >
+                    <Pencil size={14} /> Editar
+                  </button>
+                  <button onClick={() => downloadReport(viewRecord)}
+                    className="px-4 py-2 text-sm rounded bg-red-600 hover:bg-red-500 text-white flex items-center gap-2">
+                    <FileDown size={14} /> Exportar relatório
+                  </button>
+                </div>
               </div>
             </div>
           </div>
