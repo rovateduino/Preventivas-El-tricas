@@ -28,7 +28,7 @@
     "appId": "com.preventivas.eletricas",
     "productName": "Preventivas Elétricas",
     "directories": {
-      "output": "dist-producao"
+      "output": "dist"
     },
     "files": [
       "dist-web/**/*",
