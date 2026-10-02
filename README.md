@@ -47,7 +47,26 @@ Sistema desktop profissional para cadastro, medição e relatórios de manutenç
 
 - Autenticação por UID com isolamento por usuário no Firestore
 - Sistema de convites: cadastro controlado por administrador
-- Assinatura digital via `signtool.exe`
+
+### Assinatura de código (pendente)
+
+O `.exe` **ainda não é assinado**. O Windows exibe o aviso do SmartScreen porque
+falta um certificado de Autoridade Certificadora — este é um item em aberto, não
+um recurso ativo.
+
+Quando você tiver o certificado `.pfx`, basta exportar duas variáveis antes do
+build. O electron-builder assina automaticamente, sem nenhuma alteração de
+código:
+
+```powershell
+$env:CSC_LINK = "C:\certs\preventivas.pfx"
+$env:CSC_KEY_PASSWORD = "<senha-do-pfx>"
+npm run dist
+```
+
+O carimbo de tempo (RFC 3161, DigiCert) e o SHA-256 já estão configurados em
+`build.win.signtoolOptions`. Sem essas variáveis o build continua funcionando,
+apenas sem assinatura.
 
 ---
 

@@ -36,7 +36,13 @@
       "package.json"
     ],
     "win": {
-      "target": "portable"
+      "target": "portable",
+      "signtoolOptions": {
+        "timeStampServer": "http://timestamp.digicert.com",
+        "signingHashAlgorithms": [
+          "sha256"
+        ]
+      }
     },
     "portable": {
       "artifactName": "${productName} ${version} Portable.exe"
