@@ -4,38 +4,56 @@ import { Preventiva } from '../types';
 
 const COLLECTION = 'preventivas';
 
+function stripUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefinedDeep(item)) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.entries(value).reduce((acc, [key, entryValue]) => {
+      if (entryValue !== undefined) {
+        acc[key] = stripUndefinedDeep(entryValue);
+      }
+      return acc;
+    }, {} as Record<string, unknown>) as T;
+  }
+
+  return value;
+}
+
 function normalizePreventivaRecord(record: any, uid: string) {
   const now = Date.now();
   const id = String(record.id || `${uid}-${now}`).trim();
 
-  return {
+  return stripUndefinedDeep({
     ...record,
     id,
     uid,
     criadoEm: record.criadoEm ?? now,
     atualizadoEm: record.atualizadoEm ?? now,
-  };
+  });
 }
 
 export const savePreventiva = async (preventiva: Omit<Preventiva, 'id' | 'criadoEm' | 'atualizadoEm'> & { uid: string }) => {
   const now = Date.now();
-  const ref = await addDoc(collection(db, COLLECTION), {
+  const payload = stripUndefinedDeep({
     ...preventiva,
     criadoEm: now,
     atualizadoEm: now,
   });
+  const ref = await addDoc(collection(db, COLLECTION), payload);
   return ref.id;
 };
 
 export const updatePreventiva = async (id: string, preventiva: Record<string, unknown> & { uid: string }) => {
-  const payload = { ...preventiva };
-  delete payload.id;
+  const { id: _ignoredId, ...rest } = preventiva;
+  const payload = stripUndefinedDeep({
+    ...rest,
+    atualizadoEm: Date.now(),
+  });
   await setDoc(
     doc(db, COLLECTION, id),
-    {
-      ...payload,
-      atualizadoEm: Date.now(),
-    },
+    payload,
     { merge: true },
   );
 };

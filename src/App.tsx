@@ -493,7 +493,8 @@ export default function App() {
       return true;
     } catch (e) {
       console.error("Erro ao salvar no Firebase:", e);
-      setFormError("Falha ao salvar no Firebase. Verifique sua conexão.");
+      const message = e instanceof Error ? e.message : "Falha desconhecida ao salvar no Firebase.";
+      setFormError(`Falha ao salvar no Firebase: ${message}`);
       setSaveState("idle");
       return false;
     }
@@ -657,7 +658,7 @@ export default function App() {
       data,
       tipo: finalTipo,
       tipoComplemento: tipoComplemento.trim(),
-      viaSelecionada: isViaAB(tipo) ? viaSelecionada : undefined,
+      ...(isViaAB(tipo) ? { viaSelecionada } : {}),
       ticket: ticket.trim(),
       temperatura: temperatura.trim(),
       site: siteSelected,
