@@ -1,0 +1,13 @@
+node_modules
+.env
+.env.*
+dist
+dist-web
+dist-producao
+dados
+electron
+build.log
+*.log
+.vercel
+.vercel-*
+*.code-workspace
