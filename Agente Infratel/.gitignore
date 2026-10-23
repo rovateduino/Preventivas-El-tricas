@@ -1,0 +1,32 @@
+# ── Segredos e cofre: NUNCA versionar ─────────────────────────────
+.env
+.env.*
+!.env.example
+
+# Arquivos de cofre e credenciais
+*.enc
+credentials.enc
+vault/
+.opencode/
+secrets/
+
+# Sessao / telemetria do agente
+sessions/
+*.jsonl
+discovery/
+
+# Node
+node_modules/
+dist/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.playwright-browsers/
+
+# Sistema
+.DS_Store
+Thumbs.db

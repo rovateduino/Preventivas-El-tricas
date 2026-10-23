@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Agente Infratel - Login</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .container {
+            background-color: #1e1e1e;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 350px;
+            text-align: center;
+            border-top: 4px solid #ff7a00;
+        }
+        .logo {
+            width: 150px;
+            height: 150px;
+            margin-bottom: 20px;
+            border-radius: 18px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+            color: #ff7a00;
+        }
+        h2 {
+            font-size: 14px;
+            color: #a0a0a0;
+            margin-bottom: 25px;
+            font-weight: normal;
+        }
+        .input-group {
+            text-align: left;
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: #a0a0a0;
+            margin-bottom: 5px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background-color: #2a2a2a;
+            color: white;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #ff7a00;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 12px;
+            color: #a0a0a0;
+        }
+        .checkbox-group input {
+            margin-right: 10px;
+            accent-color: #ff7a00;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background-color: #ff7a00;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #e66a00;
+        }
+        #status {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #ff7a00;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- O robozinho (robo.png) fica na mesma pasta do login.html -->
+        <img src="robo.png" alt="Agente Infratel" class="logo">
+        <h1>AGENTE INFRATEL</h1>
+        <h2>AUTOMAÇÃO • RELATÓRIOS • CLARO</h2>
+
+        <div class="input-group">
+            <label>Usuário do Infratel</label>
+            <input type="text" id="user" placeholder="Digite seu usuário">
+        </div>
+
+        <div class="input-group">
+            <label>Senha do Infratel</label>
+            <input type="password" id="password" placeholder="Digite sua senha">
+        </div>
+
+        <div class="input-group">
+            <label>Número do Ticket</label>
+            <input type="text" id="ticket" placeholder="Ex: número do ticket da manutenção">
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="saveLogin">
+            <label for="saveLogin">Salvar usuário e senha neste computador</label>
+        </div>
+
+        <button onclick="submitForm()">ENTRAR E INICIAR</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // O contexto do Playwright e efemero (localStorage nao sobrevive entre
+        // execucoes do bot) e o Chromium pode bloquear localStorage em file://.
+        // Aqui ele e apenas um "cache de sessao"; a persistencia REAL entre
+        // execucoes e feita pelo Python no arquivo .env (flag 'save').
+        const ls = {
+            get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+            set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+            del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+        };
+
+        // Verifica se há dados salvos no localStorage para preencher automaticamente
+        window.onload = function() {
+            const savedUser = ls.get('infratel_user');
+            const savedPass = ls.get('infratel_pass');
+            const savedTicket = ls.get('infratel_ticket');
+
+            if (savedUser) document.getElementById('user').value = savedUser;
+            if (savedPass) document.getElementById('password').value = savedPass;
+            if (savedTicket) document.getElementById('ticket').value = savedTicket;
+
+            if (savedUser && savedPass) {
+                document.getElementById('saveLogin').checked = true;
+            }
+        };
+
+        function submitForm() {
+            const user = document.getElementById('user').value.trim();
+            const pass = document.getElementById('password').value.trim();
+            const ticket = document.getElementById('ticket').value.trim();
+            const save = document.getElementById('saveLogin').checked;
+
+            if (!user || !pass) {
+                document.getElementById('status').innerText = "Por favor, preencha usuário e senha.";
+                return;
+            }
+            if (!ticket) {
+                document.getElementById('status').innerText = "Por favor, preencha o número do ticket.";
+                return;
+            }
+
+            // Salva ou limpa os dados no navegador (best-effort, ver 'ls' acima)
+            if (save) {
+                ls.set('infratel_user', user);
+                ls.set('infratel_pass', pass);
+                ls.set('infratel_ticket', ticket);
+            } else {
+                ls.del('infratel_user');
+                ls.del('infratel_pass');
+                ls.del('infratel_ticket');
+            }
+
+            // Envia os dados para o Python ler. O flag 'save' e obrigatorio:
+            // e ele que manda o Python gravar (ou limpar) o .env deste computador.
+            window.__loginData = { user, pass, ticket, save };
+            document.getElementById('status').innerText = "Iniciando sessão no Infratel...";
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+{
+  "_comentario": "Banco de dados de peculiaridades por hub (sigla do parametro ?site= da URL). O bot le este arquivo antes de preencher; chaves iniciadas por _ sao ignoradas. Cada secao (UPS, FCC, QDCA, ...) tem um _padrao que vale para qualquer hub; basta cadastrar a sigla do site para sobrescrever so o que difere. Faixas sao [min, max] em V — o bot sorteia valores dentro delas. Depois de editar, reinicie o bot (ou rode 'hubs' no console para conferir).",
+  "_nova_regra": "Regra do tecnico (22/10/2026): somente os hubs explicitamente listados como 380V nas secoes UPS e FCC usam FN [220.0,224.3] / FF [380.0,384.3]. Todos os demais, inclusive JAIDTC e MAUDTC, usam o padrao 127/220: FN [127.0,130.3] / FF [220.0,224.3].",
+  "UPS": {
+    "_padrao": {
+      "ent_fn": [127.0, 130.3],
+      "ent_ff": [220.0, 224.3],
+      "sai_fn": [127.0, 130.3],
+      "sai_ff": [220.0, 224.3],
+      "corr_ent": 30,
+      "corr_sai": 10,
+      "freq": 60,
+      "temp_ent": 20,
+      "temp_sai": 21,
+      "corr_recarga": 0,
+      "autonomia": 100
+    },
+    "OCOJMA": {"ent_fn": [220.0, 224.3], "ent_ff": [380.0, 384.3], "sai_fn": [220.0, 224.3], "sai_ff": [380.0, 384.3]},
+    "SPOSMT": {"ent_fn": [220.0, 224.3], "ent_ff": [380.0, 384.3], "sai_fn": [220.0, 224.3], "sai_ff": [380.0, 384.3]},
+    "SPOCGR": {"ent_fn": [220.0, 224.3], "ent_ff": [380.0, 384.3], "sai_fn": [220.0, 224.3], "sai_ff": [380.0, 384.3]},
+    "DDADTC": {"ent_fn": [220.0, 224.3], "ent_ff": [380.0, 384.3], "sai_fn": [220.0, 224.3], "sai_ff": [380.0, 384.3]},
+    "SLODTC": {"ent_fn": [220.0, 224.3], "ent_ff": [380.0, 384.3], "sai_fn": [220.0, 224.3], "sai_ff": [380.0, 384.3]},
+    "ITUDTC": {"ent_fn": [220.0, 224.3], "ent_ff": [380.0, 384.3], "sai_fn": [220.0, 224.3], "sai_ff": [380.0, 384.3]},
+    "MCZDTC": {"ent_fn": [220.0, 224.3], "ent_ff": [380.0, 384.3], "sai_fn": [220.0, 224.3], "sai_ff": [380.0, 384.3]},
+    "SPOBUT": {"ent_fn": [220.0, 224.3], "ent_ff": [380.0, 384.3], "sai_fn": [220.0, 224.3], "sai_ff": [380.0, 384.3]},
+    "SPOVMN": {"ent_fn": [220.0, 224.3], "ent_ff": [380.0, 384.3], "sai_fn": [220.0, 224.3], "sai_ff": [380.0, 384.3]},
+    "SNE-JCO": {"ent_fn": [220.0, 224.3], "ent_ff": [380.0, 384.3], "sai_fn": [220.0, 224.3], "sai_ff": [380.0, 384.3]},
+    "SPOCDU": {"ent_fn": [220.0, 224.3], "ent_ff": [380.0, 384.3], "sai_fn": [220.0, 224.3], "sai_ff": [380.0, 384.3]}
+  },
+  "FCC": {
+    "_comentario": "Faixas de tensao AC do FCC (mesma logica do UPS — NOVA REGRA do tecnico). O formulario do FCC so tem campos FF (txt_tensao_rs/st/tr_fcc); a faixa 'fn' fica guardada para o caso de o formulario passar a ter RN/SN/TN.",
+    "_padrao": {
+      "fn": [127.0, 130.3],
+      "ff": [220.0, 224.3]
+    },
+    "OCOJMA": {"fn": [220.0, 224.3], "ff": [380.0, 384.3]},
+    "SPOSMT": {"fn": [220.0, 224.3], "ff": [380.0, 384.3]},
+    "SPOCGR": {"fn": [220.0, 224.3], "ff": [380.0, 384.3]},
+    "DDADTC": {"fn": [220.0, 224.3], "ff": [380.0, 384.3]},
+    "SLODTC": {"fn": [220.0, 224.3], "ff": [380.0, 384.3]},
+    "ITUDTC": {"fn": [220.0, 224.3], "ff": [380.0, 384.3]},
+    "MCZDTC": {"fn": [220.0, 224.3], "ff": [380.0, 384.3]},
+    "SPOBUT": {"fn": [220.0, 224.3], "ff": [380.0, 384.3]},
+    "SPOVMN": {"fn": [220.0, 224.3], "ff": [380.0, 384.3]},
+    "SNE-JCO": {"fn": [220.0, 224.3], "ff": [380.0, 384.3]},
+    "SPOCDU": {"fn": [220.0, 224.3], "ff": [380.0, 384.3]}
+  },
+  "QDCA": {
+    "_padrao": {
+      "fn": [128.2, 132.0],
+      "ff": [219.0, 224.3],
+      "_obs": "Todos os QDCA sao iguais entre hubs (confirmado em OCOJMA, SPOVMN e JAIDTC)."
+    }
+  },
+  "SITES": {
+    "_comentario": "Overrides de sigla para os dados REAIS de QDF/QDCC (export do app 'Preventivas Eletricas'). Chave = sigla do ?site= do Infratel; valor = sigla do app. So e necessario quando as duas nao batem (o app usa a sigla curta do hub). Ex.: o Infratel usa OCOJMA e o app usa JMA para 'Osasco II'.",
+    "_obs": "Sem override, o bot casa pela sigla normalizada (app 'SM-MOO62' -> 'SMMOO62' == ?site=). Em caso de duvida, rode o comando 'dados' no console: ele mostra as tags do site que existem no export."
+  }
+}

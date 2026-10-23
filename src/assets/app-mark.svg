@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Preventivas Elétricas">
+  <defs>
+    <linearGradient id="pvBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="0.52" stop-color="#10b981"/>
+      <stop offset="1" stop-color="#0d9488"/>
+    </linearGradient>
+    <linearGradient id="pvBolt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d1fae5"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="57" fill="url(#pvBg)"/>
+  <rect x="46" y="42" width="164" height="172" rx="20" fill="none" stroke="#ffffff" stroke-opacity="0.30" stroke-width="14"/>
+  <path d="M152 34 L84 146 L120 146 L102 222 L172 104 L134 104 Z" fill="#064e3b" fill-opacity="0.28" transform="translate(7 10)"/>
+  <path d="M152 34 L84 146 L120 146 L102 222 L172 104 L134 104 Z" fill="url(#pvBolt)"/>
+</svg>
