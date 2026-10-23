@@ -1,1 +1,85 @@
-# Preventivas-El-tricas
+<div align="center">
+
+[![Download](https://img.shields.io/badge/%F0%9F%93%82%20Download-Portable.exe-16a34a?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/rovateduino/Preventivas-El-tricas/releases/latest)
+[![GitHub Release](https://img.shields.io/github/v/release/rovateduino/Preventivas-El-tricas?style=for-the-badge&logo=github&color=6366f1)](https://github.com/rovateduino/Preventivas-El-tricas/releases/latest)
+
+<br/>
+
+</div>
+
+---
+
+## 🎯 Visão Geral
+
+Sistema desktop profissional para cadastro, medição e relatórios de manutenção preventiva em quadros elétricos. Elimina planilhas desordenadas e oferece um fluxo completo — do cadastro à impressão do relatório técnico.
+
+| Camada | Tecnologia |
+|--------|-----------|
+| **Frontend** | React 19 + TypeScript + Tailwind CSS v4 |
+| **Desktop** | Electron 41 (Portable, sem instalação) |
+| **Backend** | Firebase Firestore + Auth |
+| **Build** | Vite 6 |
+
+---
+
+## ✨ Funcionalidades
+
+- **Tipos de Quadro:** `PDT` · `QDF` · `QDCC` · `OUTRO`
+- **Tabela dinâmica:** 1 a 200 circuitos (QDF/QDCC) ou 1 a 60 (PDT/OUTRO)
+- **Cálculo automático:** soma de correntes por Via A/B ou por Fase R/S/T
+- **Tensões condicionais:** campos variam conforme o tipo de quadro
+- **Dois modos excludentes:** Modo Local (`localStorage`, só neste computador) **ou** Modo
+  Firebase (Firestore, por conta) — o app salva em um dos dois por vez e não há cópia
+  automática entre eles; a ponte manual é Exportar JSON → Importar JSON
+- **Autenticação:** login por UID com sistema de convites para administradores
+- **Relatórios:** impressão profissional via template HTML + exportação JSON
+- **Modo Local:** acesso sem login para uso individual
+
+---
+
+## 🚀 Instalação
+
+1. Baixe o `.exe` no botão acima
+2. Clique duas vezes para executar — **sem instalação**
+3. Se o SmartScreen bloquear, clique em **"Mais informações" → "Executar assim mesmo"**
+
+---
+
+## 🛡️ Segurança
+
+- Autenticação por UID com isolamento por usuário no Firestore
+- Sistema de convites: cadastro controlado por administrador
+
+### Assinatura de código (pendente)
+
+O `.exe` **ainda não é assinado**. O Windows exibe o aviso do SmartScreen porque
+falta um certificado de Autoridade Certificadora — este é um item em aberto, não
+um recurso ativo.
+
+Quando você tiver o certificado `.pfx`, basta exportar duas variáveis antes do
+build. O electron-builder assina automaticamente, sem nenhuma alteração de
+código:
+
+```powershell
+$env:CSC_LINK = "C:\certs\preventivas.pfx"
+$env:CSC_KEY_PASSWORD = "<senha-do-pfx>"
+npm run dist
+```
+
+O carimbo de tempo (RFC 3161, DigiCert) e o SHA-256 já estão configurados em
+`build.win.signtoolOptions`. Sem essas variáveis o build continua funcionando,
+apenas sem assinatura.
+
+---
+
+## 📄 Licença
+
+Software **proprietário**. Reprodução ou distribuição sem autorização não é permitida.
+
+---
+
+<div align="center">
+
+**Feito com ⚡ por [rovateduino](https://github.com/rovateduino)**
+
+</div>

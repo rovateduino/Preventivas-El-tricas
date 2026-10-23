@@ -1,0 +1,16 @@
+node_modules
+.env
+.env.*
+dist
+dist-web
+dist-producao
+dados
+electron
+build.log
+*.log
+.vercel
+.vercel-*
+*.code-workspace
+Firebase Chave preventivas-eletricas.json
+*chave*.json
+serviceAccount*.json

@@ -1,0 +1,34 @@
+{
+  "hosting": {
+    "public": "dist-web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "**/src/**",
+      "**/__snapshots__/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css|html|json)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=3600"
+          }
+        ]
+      }
+    ]
+  },
+  "firestore": {
+    "database": "ai-studio-sistemadeprevent-331e703e-b4a1-4079-a60b-e1444bda9afe",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

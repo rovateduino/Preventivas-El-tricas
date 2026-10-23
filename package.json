@@ -1,0 +1,63 @@
+{
+  "name": "preventivas-eletricas",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Sistema de registro, cálculo e relatório de medições de manutenção preventiva em quadros elétricos de sites de telecomunicação.",
+  "author": "Rovateduino",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test:report": "node src/lib/report.test.mjs",
+    "dist": "vite build && electron-builder"
+  },
+  "dependencies": {
+    "firebase": "^12.16.0",
+    "lucide-react": "^0.546.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1"
+  },
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "com.preventivas.eletricas",
+    "productName": "Preventivas Elétricas",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "dist-web/**/*",
+      "electron/**/*",
+      "package.json",
+      "!node_modules/**/*"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "icons/icon.ico",
+      "signtoolOptions": {
+        "rfc3161TimeStampServer": "http://timestamp.digicert.com",
+        "timeStampServer": "http://timestamp.digicert.com",
+        "signingHashAlgorithms": [
+          "sha256"
+        ]
+      }
+    },
+    "portable": {
+      "artifactName": "${productName} ${version} Portable.exe"
+    },
+    "compression": "store"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "electron": "^41.7.1",
+    "electron-builder": "^26.15.3",
+    "typescript": "^7.0.2",
+    "vite": "^6.2.3"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6",
+    "global-agent": "^4.1.3"
+  }
+}
