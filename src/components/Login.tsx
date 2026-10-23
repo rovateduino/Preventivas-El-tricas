@@ -91,7 +91,7 @@ export default function Login({ onLogin, onSwitchMode, externalError, allowFirst
   };
 
   const openAbout = () => setShowAbout(true);
-  const downloadUrl = 'https://github.com/rovateduino/Preventivas-El-tricas/releases/latest';
+  const downloadUrl = 'https://github.com/rovateduino/Preventivas-El-tricas/releases/download/Preventivas_El%C3%A9tricas/Preventivas.Eletricas.1.0.0.Portable.exe';
   const infratelDownloadUrl = 'https://github.com/rovateduino/Agente_Infratel/releases/download/ZIP_Agente/Agente_Infratel_v1.0_Completo.zip';
 
   const appFeatures = [
